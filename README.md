@@ -10,7 +10,7 @@ A self-hosted, AI-enhanced image archiving system built with Flask. Features met
 - 🏷️ AI自动标签（使用Gemini API）
 - 🔍 图片搜索（按图搜图）
 - 📱 iOS Web App优化
-- 🎯 超椭圆圆角（Apple风格）
+- 🎯 超椭圆圆角
 - 📚 漫画阅读器
 
 ## 安装配置
