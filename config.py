@@ -26,7 +26,3 @@ STATIC_DIR = "static"
 
 # 8. 图片显示配置
 ENABLE_FULL_RES_CARD_IMAGES = False
-
-# 9. AI标签生成配置
-GEMINI_API_KEY = "AIzaSyBU2_8p3R7hoA8fDxGQB9jodXbN_pe_5-Y"
-GEMINI_MODEL_NAME = "gemini-2.0-flash-exp"
