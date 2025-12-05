@@ -1,6 +1,6 @@
-# Zootopia Fanart Gallery
+# Z-Gallery
 
-一个用于管理和浏览Zootopia同人作品的Web应用。
+A self-hosted, AI-enhanced image archiving system built with Flask. Features metadata curation, visual deduplication, and batch analysis. Originally crafted for a 23k+ Zootopia fanarts.
 
 ## 功能特性
 
