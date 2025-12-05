@@ -1,0 +1,117 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="add-artwork-container">
+    <h2>Add New Artwork</h2>
+    
+    <!-- 新增的URL元数据提取器 -->
+    <div class="metadata-fetcher">
+        <div class="form-group">
+            <label for="artwork_url">Fetch Metadata from URL</label>
+            <div class="input-with-button">
+                <input type="url" id="artwork_url" placeholder="Paste image URL here (e.g., from Twitter, Pixiv, etc.)">
+                <button type="button" id="fetch-button">Fetch</button>
+            </div>
+            <div class="form-group">
+                <label for="gallery_dl_proxy">Custom gallery-dl Proxy (optional)</label>
+                <input type="url" id="gallery_dl_proxy" placeholder="e.g., http://172.20.10.1:10809 (leave empty to use gallery-dl.conf default)">
+            </div>
+            <div class="form-group auto-check-duplicate">
+                <input type="checkbox" id="auto-check-duplicate" checked>
+                <label for="auto-check-duplicate">Auto Check for Duplicates</label>
+            </div>
+            <div id="fetch-status"></div>
+        </div>
+    </div>
+
+    <div class="drop-zones-container">
+        <!-- URL Drop Zone -->
+        <div id="url-drop-zone" class="drop-zone">
+            <p>Drag & Drop a URL here to fetch metadata.</p>
+        </div>
+
+        <!-- File Drop Zone -->
+        <div id="file-drop-zone" class="drop-zone">
+            <p>Drag & Drop an image file here, or click to select a file.</p>
+            <input type="file" id="artwork_file" name="artwork_file" required>
+            <img id="image-preview" src="#" alt="Image Preview" class="hidden"/>
+        </div>
+    </div>
+
+    <form id="add-artwork-form" action="{{ url_for('api_add_artwork') }}" method="post" enctype="multipart/form-data">
+        
+        <!-- 新增的、作为“状态桥梁”的隐藏输入框 -->
+        <input type="hidden" name="temp_filename" id="temp_filename_input">
+
+        <!-- Metadata Fields -->
+        <div class="form-grid">
+            <div class="form-group autocomplete-container">
+                <label for="platform">Platform *</label>
+                <input type="text" id="platform" name="platform" required autocomplete="off">
+                <div class="autocomplete-results"></div>
+            </div>
+            <div class="form-group autocomplete-container">
+                <label for="artist">Artist *</label>
+                <input type="text" id="artist" name="artist" required autocomplete="off">
+                <div class="autocomplete-results"></div>
+            </div>
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" name="title">
+            </div>
+            <div class="form-group">
+                <label for="rating">Rating</label>
+                <div class="rating-form">
+                    <div id="rating-form">
+                        {% for i in range(1, 11) %}
+                            <button type="button" name="rating" value="{{ i }}" class="rating-star">☆</button>
+                        {% endfor %}
+                        <button type="button" class="rating-reset" title="Reset Rating">×</button>
+                        <input type="hidden" id="rating" name="rating" value="">
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    <option value="fanart_non_comic" selected>Art</option>
+                    <option value="fanart_comic">Comic</option>
+                    <option value="real_photo">Photo</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="classification">Classification</label>
+                <select id="classification" name="classification">
+                    <option value="" selected>Unspecified</option>
+                    <option value="sfw">SFW</option>
+                    <option value="mature">Mature</option>
+                    <option value="nsfw">NSFW</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="publication_date">Publication Date</label>
+                <input type="text" id="publication_date" name="publication_date" placeholder="Will be auto-filled from URL metadata">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="tags">Tags (comma separated)</label>
+            <input type="text" id="tags" name="tags">
+        </div>
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="4"></textarea>
+        </div>
+
+        <div class="form-actions">
+            <div class="action-buttons">
+                <button type="submit" id="submit-button">Upload Artwork</button>
+                <button type="button" id="check-duplicate-btn" class="secondary-button">Check for Duplicates</button>
+                <button type="button" id="reset-form-btn" class="secondary-button">Reset Form</button>
+            </div>
+            <div id="form-status"></div>
+        </div>
+    </form>
+</div>
+<script src="{{ url_for('static', filename='js/add_artwork.js') }}"></script>
+{% endblock %}

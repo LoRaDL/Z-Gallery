@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Monitoring - Zootopia Gallery</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/statistics.css') }}">
+    <style>
+        .monitoring-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--link-color);
+            margin: 0.5rem 0;
+        }
+
+        .metric-label {
+            color: var(--font-color);
+            font-size: 0.9em;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn {
+            background-color: var(--link-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .refresh-btn:hover {
+            background-color: var(--link-hover);
+        }
+
+        .log-section {
+            background-color: var(--card-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-family: monospace;
+            font-size: 0.8em;
+        }
+
+        .log-entry.error {
+            color: #dc3545;
+        }
+
+        .log-entry.warning {
+            color: #ffc107;
+        }
+
+        .log-entry.info {
+            color: var(--font-color);
+        }
+
+        .system-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .system-info .metric-card {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><a href="{{ url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
+        <nav>
+            <a href="{{ url_for('categories_list') }}">Categories</a>
+            <a href="{{ url_for('slide_view', sort='random') }}">Slide View</a>
+            <a href="{{ url_for('gallery', sort='random') }}">Random</a>
+            <a href="{{ url_for('statistics') }}">Statistics</a>
+            <a href="{{ url_for('add_artwork_page') }}">Add Artwork</a>
+            <a href="{{ url_for('monitoring') }}">Monitoring</a>
+        </nav>
+    </header>
+
+    <main>
+        <h2>System Monitoring</h2>
+
+        <button class="refresh-btn" onclick="refreshData()">Refresh Data</button>
+
+        <div class="monitoring-grid">
+            <div class="metric-card">
+                <div class="metric-label">Total Requests</div>
+                <div class="metric-value" id="requests-total">{{ monitoring.requests_total }}</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Total Errors</div>
+                <div class="metric-value" id="errors-total">{{ monitoring.errors_total }}</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Error Rate</div>
+                <div class="metric-value" id="error-rate">{{ "%.2f"|format(monitoring.error_rate) }}%</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Uptime</div>
+                <div class="metric-value" id="uptime">{{ (monitoring.uptime_seconds / 3600)|round(1) }}h</div>
+            </div>
+        </div>
+
+        <div class="system-info">
+            <div class="metric-card">
+                <h3>System Resources</h3>
+                <div class="metric-label">CPU Usage: <span id="cpu-percent">{{ monitoring.system_info.cpu_percent }}%</span></div>
+                <div class="metric-label">Memory Usage: <span id="memory-percent">{{ monitoring.system_info.memory_percent }}%</span></div>
+                <div class="metric-label">Disk Usage: <span id="disk-usage">{{ monitoring.system_info.disk_usage }}%</span></div>
+                <div class="metric-label">Process Count: <span id="process-count">{{ monitoring.system_info.process_count }}</span></div>
+            </div>
+
+            <div class="metric-card">
+                <h3>Last Updated</h3>
+                <div class="metric-label" id="last-updated">{{ monitoring.timestamp }}</div>
+                <button class="refresh-btn" onclick="viewLogs()">View Recent Logs</button>
+                <button class="refresh-btn secondary-button" onclick="downloadLogs()">Download Logs</button>
+            </div>
+        </div>
+
+        <div class="log-section" id="log-section" style="display: none;">
+            <h3>Recent Application Logs</h3>
+            <div id="log-entries">
+                {% for log in recent_logs %}
+                <div class="log-entry {{ log.level.lower() }}">
+                    [{{ log.timestamp }}] {{ log.level }}: {{ log.message }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>A Personal Collection</p>
+    </footer>
+
+    <script>
+        function refreshData() {
+            fetch('/api/monitoring')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('requests-total').textContent = data.requests_total;
+                    document.getElementById('errors-total').textContent = data.errors_total;
+                    document.getElementById('error-rate').textContent = data.error_rate.toFixed(2) + '%';
+                    document.getElementById('uptime').textContent = (data.uptime_seconds / 3600).toFixed(1) + 'h';
+                    document.getElementById('cpu-percent').textContent = data.system_info.cpu_percent + '%';
+                    document.getElementById('memory-percent').textContent = data.system_info.memory_percent + '%';
+                    document.getElementById('disk-usage').textContent = data.system_info.disk_usage + '%';
+                    document.getElementById('process-count').textContent = data.system_info.process_count;
+                    document.getElementById('last-updated').textContent = data.timestamp;
+                })
+                .catch(error => console.error('Error refreshing data:', error));
+        }
+
+        function viewLogs() {
+            const logSection = document.getElementById('log-section');
+            logSection.style.display = logSection.style.display === 'none' ? 'block' : 'none';
+
+            if (logSection.style.display === 'block') {
+                fetch('/api/logs')
+                    .then(response => response.json())
+                    .then(data => {
+                        const logEntries = document.getElementById('log-entries');
+                        logEntries.innerHTML = '';
+                        data.logs.forEach(log => {
+                            const logEntry = document.createElement('div');
+                            logEntry.className = `log-entry ${log.level.toLowerCase()}`;
+                            logEntry.textContent = `[${log.timestamp}] ${log.level}: ${log.message}`;
+                            logEntries.appendChild(logEntry);
+                        });
+                    })
+                    .catch(error => console.error('Error fetching logs:', error));
+            }
+        }
+
+        function downloadLogs() {
+            window.open('/api/logs/download', '_blank');
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+
+        // Initial refresh
+        refreshData();
+    </script>
+</body>
+</html>

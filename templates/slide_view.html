@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/slide_view.css') }}">
+
+<div class="slide-view-container">
+    <!-- 筛选控件 -->
+    <div class="controls-container">
+        <!-- Classification Group -->
+        <span class="filter-label">Class:</span>
+        <a href="{{ url_for('slide_view', **generate_url_params('classification_filter', 'unspecified')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'unspecified' }}">Unspecified</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('classification_filter', 'sfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'sfw' }}">SFW</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('classification_filter', 'mature')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'mature' }}">Mature</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('classification_filter', 'nsfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'nsfw' }}">NSFW</a>
+
+        <span class="separator">|</span>
+
+        <!-- Category Group -->
+        <span class="filter-label">Category:</span>
+        <a href="{{ url_for('slide_view', **generate_url_params('category', 'fanart_non_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_non_comic' }}">Art</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('category', 'fanart_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_comic' }}">Comic</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('category', 'real_photo')) }}" class="{{ 'active' if current_filters.get('category') == 'real_photo' }}">Photo</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
+
+        <span class="separator">|</span>
+
+        <!-- Rating Group -->
+        <span class="filter-label">Rating:</span>
+        <a href="{{ url_for('slide_view', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('rating_filter', '2_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '2_plus' }}">2★+</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
+        <a href="{{ url_for('slide_view', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>
+    </div>
+
+    {% if current_filters %}
+    <div class="active-filters">
+        <span>Active Filters:</span>
+        {% for key, value in current_filters.items() %}
+            {% if key not in ['id', 'sort', 'seed'] %}
+                <a href="{{ url_for('slide_view', **generate_url_params(key, None)) }}" class="filter-pill">
+                    {{ key }}: {{ value }} &times;
+                </a>
+            {% endif %}
+        {% endfor %}
+        <a href="{{ url_for('slide_view') }}" class="filter-pill clear-all">Clear All</a>
+    </div>
+    {% endif %}
+
+    <!-- 图片显示区域 -->
+    <div class="slide-image-container" id="image-top">
+        {% if artwork %}
+            <!-- 新的锚点元素 -->
+            <div class="image-anchor"></div>
+            <div class="slide-image-wrapper">
+                {% if image_aspect_ratio and image_aspect_ratio > 0 %}
+                <div class="image-aspect-container" style="padding-bottom: {{ '%0.2f'|format(1 / image_aspect_ratio * 100) }}%;">
+                {% else %}
+                <div class="image-aspect-container">
+                {% endif %}
+                    <img src="{{ url_for('static', filename='thumbnails/' + artwork.thumbnail_filename) }}" alt="{{ artwork.title or artwork.file_name }}" class="slide-thumbnail">
+                    <img src="{{ url_for('image_proxy', artwork_id=artwork.id) }}" alt="{{ artwork.title or artwork.file_name }}" id="slide-image" class="slide-full-image">
+                </div>
+            </div>
+
+            <!-- 评分区域 -->
+            <div class="slide-rating-section">
+                <form class="rating-form" action="{{ url_for('rate_artwork', artwork_id=artwork.id) }}" method="post">
+                    <div class="star-rating">
+                        {% for i in range(1, 11) %}
+                            <button type="submit" name="rating" value="{{ i }}" class="star-button {{ 'rated' if artwork.rating and i <= artwork.rating }}">
+                                {% if artwork.rating and i <= artwork.rating %}★{% else %}☆{% endif %}
+                            </button>
+                        {% endfor %}
+                    </div>
+                </form>
+            </div>
+
+            <!-- 图片信息区域 -->
+            <div class="slide-info">
+                <h2 class="slide-title">
+                    <a href="{{ url_for('gallery', **current_filters_without_id) }}#artwork-{{ artwork.id }}">{{ artwork.title or 'Untitled' }}</a>
+                </h2>
+                <p class="slide-artist">
+                    <a href="{{ url_for('gallery', artist=artwork.artist, **current_filters_without_id) }}">{{ artwork.artist or 'Unknown' }}</a>
+                </p>
+            </div>
+
+            <!-- 操作按钮区域 -->
+            <div class="slide-actions">
+                <a href="{{ url_for('slide_view', **dict(current_filters, id=prev_artwork_id)) }}#image-top" class="action-button" id="prev-button">Previous</a>
+                <a href="{{ url_for('artwork_detail', artwork_id=artwork.id) }}#page-top" class="action-button">View Details</a>
+                <a href="{{ url_for('slide_view', **dict(current_filters, id=next_artwork_id)) }}#image-top" class="action-button" id="next-button">Next</a>
+            </div>
+            <!-- 无JS设备的简单链接 -->
+            <noscript>
+                <style>.slide-actions { display: none; }</style>
+                <div class="slide-actions">
+                    <a href="{{ url_for('slide_view', **dict(current_filters, id=prev_artwork_id)) }}#image-top" id="prev-link">Previous</a>
+                    <a href="{{ url_for('artwork_detail', artwork_id=artwork.id) }}#page-top" id="details-link">View Details</a>
+                    <a href="{{ url_for('slide_view', **dict(current_filters, id=next_artwork_id)) }}#image-top" id="next-link">Next</a>
+                </div>
+            </noscript>
+
+            <!-- 导航链接 -->
+            <div class="slide-navigation">
+                <a href="{{ url_for('gallery') }}" class="back-link">&laquo; Back to Gallery</a>
+                <span class="position-info">Image {{ current_position }} of {{ total_images }}</span>
+            </div>
+        {% else %}
+            <p>No artwork found matching your criteria.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/slide_view.js') }}"></script>
+{% endblock %}

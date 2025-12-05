@@ -1,0 +1,455 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<!-- SVG 容器：用于存放动态生成的超椭圆 clip-path -->
+<svg width="0" height="0" style="position: absolute;" id="squircle-defs">
+    <defs id="squircle-clips">
+        <!-- 超椭圆 clip-path 会通过 JavaScript 动态生成 -->
+        <!-- 每个卡片使用固定 12px 半径，避免长方形变形 -->
+    </defs>
+</svg>
+
+<div class="controls-container">
+    <!-- Sort Group -->
+    <span class="filter-label">Sort:</span>
+    <a href="{{ url_for('gallery', **generate_url_params('sort', 'newest')) }}" class="{{ 'active' if current_sort == 'newest' }}">Newest</a>
+    <a href="{{ url_for('gallery', **generate_url_params('sort', 'oldest')) }}" class="{{ 'active' if current_sort == 'oldest' }}">Oldest</a>
+    <a href="{{ url_for('gallery', **generate_url_params('sort', 'latest_added')) }}" class="{{ 'active' if current_sort == 'latest_added' }}">Latest Added</a>
+    <a href="{{ url_for('gallery', **generate_url_params('sort', 'rating')) }}" class="{{ 'active' if current_sort == 'rating' }}">Rating</a>
+
+    <span class="separator">|</span>
+
+    <!-- Classification Group -->
+    <span class="filter-label">Class:</span>
+    <a href="{{ url_for('gallery', **generate_url_params('classification_filter', 'unspecified')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'unspecified' }}">Unspecified</a>
+    <a href="{{ url_for('gallery', **generate_url_params('classification_filter', 'sfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'sfw' }}">SFW</a>
+    <a href="{{ url_for('gallery', **generate_url_params('classification_filter', 'mature')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'mature' }}">Mature</a>
+    <a href="{{ url_for('gallery', **generate_url_params('classification_filter', 'nsfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'nsfw' }}">NSFW</a>
+
+    <span class="separator">|</span>
+
+    <!-- Category Group -->
+    <span class="filter-label">Category:</span>
+    <a href="{{ url_for('gallery', **generate_url_params('category', 'fanart_non_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_non_comic' }}">Art</a>
+    <a href="{{ url_for('gallery', **generate_url_params('category', 'fanart_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_comic' }}">Comic</a>
+    <a href="{{ url_for('gallery', **generate_url_params('category', 'real_photo')) }}" class="{{ 'active' if current_filters.get('category') == 'real_photo' }}">Photo</a>
+    <a href="{{ url_for('gallery', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
+
+    <span class="separator">|</span>
+
+    <!-- Rating Group -->
+    <span class="filter-label">Rating:</span>
+    <a href="{{ url_for('gallery', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
+    <a href="{{ url_for('gallery', **generate_url_params('rating_filter', '2_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '2_plus' }}">2★+</a>
+    <a href="{{ url_for('gallery', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
+    <a href="{{ url_for('gallery', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>
+</div>
+
+    {% if current_filters %}
+    <div class="active-filters">
+        <span>Active Filters:</span>
+        <!-- FIX: Use the new helper function for removing filters -->
+        {% for key, value in current_filters.items() %}
+            {% if key == 'similar_to' %}
+                <a href="{{ url_for('gallery', **generate_url_params(key, None)) }}" class="filter-pill">
+                    Similar Images (Threshold: {{ current_filters.get('threshold', '10') }}) &times;
+                </a>
+            {% elif key not in ['sort', 'seed', 'page'] %}
+                <a href="{{ url_for('gallery', **generate_url_params(key, None)) }}" class="filter-pill">
+                    {{ key }}: {{ value }} &times;
+                </a>
+            {% endif %}
+        {% endfor %}
+        <a href="{{ url_for('gallery', sort='random') }}" class="filter-pill clear-all">Clear All</a>
+    </div>
+    {% endif %}
+
+    <!-- Search by Image Modal -->
+    <div id="image-search-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Search by Image</h2>
+            <div id="image-drop-zone" class="drop-zone">
+                <p>Drag & Drop an image file here, or click to select a file.</p>
+                <input type="file" id="file-input" name="search_file">
+                <img id="image-preview" src="#" alt="Image Preview" class="hidden"/>
+            </div>
+            <div class="threshold-container">
+                <label for="threshold-slider">Threshold: <span id="threshold-value">10</span></label>
+                <input type="range" id="threshold-slider" class="threshold-slider" name="threshold" min="0" max="20" value="10">
+            </div>
+            <button id="search-button" class="search-button">Search</button>
+            <div id="search-status" class="search-status"></div>
+        </div>
+    </div>
+
+    <!-- Total Images Count -->
+    <div class="total-count">
+        <span>Total Images: {{ total_artworks }}</span>
+    </div>
+
+    <div class="gallery-grid">
+        {% for col in range(columns) %}
+            <div class="masonry-column">
+                {% for art in artworks %}
+                    {% if artwork_columns[loop.index0] == col %}
+                        <div class="card" id="artwork-{{ art.id }}">
+                            <!-- 核心改动: 恢复图片链接结构 -->
+                            <a href="{{ url_for('artwork_detail', artwork_id=art.id) }}#page-top" class="card-image-link">
+                                {% if config.ENABLE_FULL_RES_CARD_IMAGES %}
+                                    <img src="{{ url_for('image_proxy', artwork_id=art.id) }}" 
+                                         alt="{{ art.title or art.file_name }}" 
+                                         loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
+                                         {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
+                                         decoding="async">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='thumbnails/' + (art.thumbnail_filename or 'default.jpg')) }}" 
+                                         alt="{{ art.title or art.file_name }}" 
+                                         loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
+                                         {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
+                                         decoding="async">
+                                {% endif %}
+                            </a>
+                            {% if art.classification in ['unspecified', 'mature', 'nsfw'] or art.classification is none %}
+                                <div class="card-classification">{{ art.classification|title if art.classification else 'Unspecified' }}</div>
+                            {% endif %}
+                            <div class="card-info">
+                                <p class="artist"><a href="{{ url_for('gallery', artist=art.artist) }}">{{ art.artist or 'Unknown' }}</a></p>
+                                <p class="title">
+                                    <a href="{{ url_for('artwork_detail', artwork_id=art.id) }}#page-top">{{ art.title or 'Untitled' }}</a>
+                                </p>
+                                <div class="rating-form">
+                                    <form action="{{ url_for('rate_artwork', artwork_id=art.id) }}" method="post">
+                                        {% for i in range(1, 11) %}
+                                            <button type="submit" name="rating" value="{{ i }}" class="{{ 'rated' if art.rating and i <= art.rating }}">
+                                                {# 这是核心改动: 根据条件选择星星字符 #}
+                                                {% if art.rating and i <= art.rating %}★{% else %}☆{% endif %}
+                                            </button>
+                                        {% endfor %}
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+    
+    {% if not artworks %}
+        <p>No artworks found matching your criteria.</p>
+    {% endif %}
+
+    <div class="pagination">
+        <!-- Prev/Next 按钮行 -->
+        <div class="pagination-nav">
+            {% if page > 1 %}
+                <a href="{{ url_for('gallery', **generate_url_params('page', page - 1)) }}">« Prev</a>
+            {% endif %}
+            {% if page < total_pages %}
+                <a href="{{ url_for('gallery', **generate_url_params('page', page + 1)) }}">Next »</a>
+            {% endif %}
+        </div>
+        
+        <!-- Page 表单行 -->
+        <form action="{{ url_for('gallery') }}" method="get" class="page-jump-form">
+            <span>Page</span>
+            <input type="number" name="page" value="{{ page }}" min="1" max="{{ total_pages }}">
+            <span>of {{ total_pages }}</span>
+            <button type="submit">Go</button>
+            <!-- Hidden fields to preserve other filters when jumping pages -->
+            {% for key, value in current_filters.items() %}
+                {% if key != 'page' %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+            <input type="hidden" name="sort" value="{{ current_sort }}">
+        </form>
+    </div>
+
+<script>
+//超椭圆
+function generateSquirclePath(width, height, radius) {
+    // 固定半径，避免长方形变形
+    const r = Math.min(radius, width / 2, height / 2);
+    const n = 5; // Apple 使用的超椭圆指数
+    const steps = 30; // 增加点数以提高平滑度
+    
+    // 计算超椭圆四分之一圆的点
+    function superellipseQuarter() {
+        const points = [];
+        for (let i = 0; i <= steps; i++) {
+            const angle = (i / steps) * (Math.PI / 2);
+            // 超椭圆公式：|x|^n + |y|^n = r^n
+            // 参数化形式：x = r * cos(t)^(2/n), y = r * sin(t)^(2/n)
+            const px = r * Math.pow(Math.cos(angle), 2/n);
+            const py = r * Math.pow(Math.sin(angle), 2/n);
+            points.push([px, py]);
+        }
+        return points;
+    }
+    
+    const corner = superellipseQuarter();
+    let path = '';
+    
+    // 从左上角圆弧的起点开始 (r, 0)，顺时针绘制
+    path += `M ${r},0`;
+    
+    // 顶部直线到右上角
+    path += ` L ${width - r},0`;
+    
+    // 右上角超椭圆：从 (width-r, 0) 到 (width, r)
+    for (let i = corner.length - 1; i >= 0; i--) {
+        const [px, py] = corner[i];
+        path += ` L ${width - r + px},${r - py}`;
+    }
+    
+    // 右侧直线到右下角
+    path += ` L ${width},${height - r}`;
+    
+    // 右下角超椭圆：从 (width, height-r) 到 (width-r, height)
+    for (let i = corner.length - 1; i >= 0; i--) {
+        const [px, py] = corner[i];
+        path += ` L ${width - r + py},${height - r + px}`;
+    }
+    
+    // 底部直线到左下角
+    path += ` L ${r},${height}`;
+    
+    // 左下角超椭圆：从 (r, height) 到 (0, height-r)
+    for (let i = corner.length - 1; i >= 0; i--) {
+        const [px, py] = corner[i];
+        path += ` L ${r - px},${height - r + py}`;
+    }
+    
+    // 左侧直线到左上角
+    path += ` L 0,${r}`;
+    
+    // 左上角超椭圆：从 (0, r) 到 (r, 0)
+    // corner 是从 (r, 0) 到 (0, r)
+    // 变换公式：(px, py) -> (r-py, r-px)
+    for (let i = corner.length - 1; i >= 0; i--) {
+        const [px, py] = corner[i];
+        path += ` L ${r - py},${r - px}`;
+    }
+    
+    // 闭合路径
+    path += ' Z';
+    return path;
+}
+
+// 响应式瀑布流：页面加载时根据屏幕宽度分配卡片（仅执行一次）
+document.addEventListener('DOMContentLoaded', function() {
+    const galleryGrid = document.querySelector('.gallery-grid');
+    if (!galleryGrid) return;
+    
+    // 标记 JavaScript 已启用
+    galleryGrid.classList.add('js-enabled');
+    
+    // 为单个卡片应用超椭圆的函数（提到外层作用域）
+    function applySquircleToCard(card, index) {
+        const rect = card.getBoundingClientRect();
+        const width = Math.round(rect.width);
+        const height = Math.round(rect.height);
+        const radius = 80;
+        
+        // 只有当卡片有实际尺寸时才应用
+        if (width === 0 || height === 0) {
+            console.log(`⚠️ 卡片 ${index} 尺寸为 0，跳过`);
+            return;
+        }
+        
+        const svgDefs = document.getElementById('squircle-clips');
+        const clipId = `squircle-${index}`;
+        
+        // 如果已存在，先移除旧的
+        const existingClip = document.getElementById(clipId);
+        if (existingClip) {
+            existingClip.remove();
+        }
+        
+        // 创建新的 clipPath
+        const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+        clipPath.setAttribute('id', clipId);
+        clipPath.setAttribute('clipPathUnits', 'userSpaceOnUse');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', generateSquirclePath(width, height, radius));
+        
+        clipPath.appendChild(path);
+        svgDefs.appendChild(clipPath);
+        
+        // 应用 clip-path
+        const clipPathUrl = `url(#${clipId})`;
+        card.style.clipPath = clipPathUrl;
+        card.style.webkitClipPath = clipPathUrl;
+        
+        // 标记已应用
+        card.setAttribute('data-squircle', 'applied');
+        card.setAttribute('data-squircle-id', clipId);
+        card.setAttribute('data-squircle-size', `${width}x${height}`);
+        
+        console.log(`✅ 卡片 ${index} 超椭圆已更新: ${width}x${height}`);
+    }
+    
+    // 为所有卡片应用超椭圆
+    function applySquircleClipPaths() {
+        const cards = document.querySelectorAll('.card');
+        
+        cards.forEach((card, index) => {
+            applySquircleToCard(card, index);
+        });
+        
+        console.log(`✅ 初始超椭圆应用到 ${cards.length} 个卡片`);
+    }
+    
+    // 设置图片加载监听器的函数（在卡片分配后调用）
+    function setupImageLoadListeners() {
+        const allImages = document.querySelectorAll('.card img');
+        console.log(`🖼️ 找到 ${allImages.length} 张图片，开始监听加载`);
+        
+        allImages.forEach((img, imgIndex) => {
+            const card = img.closest('.card');
+            if (!card) {
+                console.log(`⚠️ 图片 ${imgIndex} 没有找到父卡片`);
+                return;
+            }
+            
+            // 获取卡片在所有卡片中的索引
+            const allCards = Array.from(document.querySelectorAll('.card'));
+            const cardIndex = allCards.indexOf(card);
+            
+            // 图片加载完成后重新应用超椭圆
+            const reapplySquircle = () => {
+                console.log(`🔄 图片 ${imgIndex} (卡片 ${cardIndex}) 加载完成，重新应用超椭圆`);
+                // 等待一小段时间，确保布局已更新
+                setTimeout(() => {
+                    applySquircleToCard(card, cardIndex);
+                }, 100);
+            };
+            
+            if (img.complete && img.naturalHeight !== 0) {
+                // 图片已经加载完成
+                console.log(`✓ 图片 ${imgIndex} 已加载完成`);
+                reapplySquircle();
+            } else {
+                // 监听图片加载
+                console.log(`⏳ 图片 ${imgIndex} 等待加载...`);
+                img.addEventListener('load', () => {
+                    console.log(`📥 图片 ${imgIndex} load 事件触发`);
+                    reapplySquircle();
+                });
+                img.addEventListener('error', () => {
+                    console.log(`❌ 图片 ${imgIndex} 加载失败`);
+                    reapplySquircle();
+                });
+            }
+        });
+    }
+    
+    // 获取所有卡片（从所有列中）
+    const allCards = Array.from(document.querySelectorAll('.masonry-column .card'));
+    if (allCards.length === 0) return;
+    
+    // 获取宽高比数据
+    const aspectRatios = {{ aspect_ratios | tojson | safe }};
+    
+    // 根据屏幕宽度确定列数
+    function getColumnCount() {
+        const width = window.innerWidth;
+        if (width <= 600) return 1;
+        else if (width <= 900) return 2;
+        else if (width <= 1200) return 3;
+        else return 4;
+    }
+    
+    // 重新分配卡片到列的函数
+    function redistributeCards() {
+        const columnCount = getColumnCount();
+        const columns = galleryGrid.querySelectorAll('.masonry-column');
+        
+        // 清空所有列
+        columns.forEach(col => col.innerHTML = '');
+        
+        // 显示/隐藏列
+        columns.forEach((col, index) => {
+            col.style.display = index < columnCount ? 'flex' : 'none';
+        });
+        
+        // 初始化列高度
+        const columnHeights = new Array(columnCount).fill(0);
+        
+        // 重新分配卡片
+        allCards.forEach(card => {
+            // 获取卡片的 artwork ID
+            const artworkId = parseInt(card.id.replace('artwork-', ''));
+            const aspectRatio = aspectRatios[artworkId] || 1.0;
+            const cardHeight = 1.0 / aspectRatio + 0.3;
+            
+            // 找到最短的列
+            const minColIndex = columnHeights.indexOf(Math.min(...columnHeights));
+            
+            // 将卡片添加到该列
+            columns[minColIndex].appendChild(card.cloneNode(true));
+            
+            // 更新列高度
+            columnHeights[minColIndex] += cardHeight;
+        });
+        
+        // 卡片重新分配完成后，只设置图片加载监听（不立即应用超椭圆）
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                console.log('🖼️ 设置图片加载监听...');
+                setupImageLoadListeners();
+            });
+        });
+    }
+    
+    // 初始分配
+    redistributeCards();
+    
+    // 监听窗口大小变化
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        // 防抖：等待用户停止调整窗口大小后再重新布局
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            console.log('📐 窗口大小改变，重新布局...');
+            redistributeCards();
+        }, 300); // 300ms 防抖延迟
+    });
+    
+    // iOS 调试信息（仅在开发时显示）
+    // 取消下面的注释以启用调试信息显示
+    /*
+    setTimeout(() => {
+        const debugInfo = document.createElement('div');
+        debugInfo.style.cssText = 'position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 8px; font-size: 12px; z-index: 9999; max-width: 300px;';
+        
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const cards = document.querySelectorAll('.card');
+        const appliedCount = document.querySelectorAll('.card[data-clip-verified="yes"]').length;
+        const failedCount = document.querySelectorAll('.card[data-clip-verified="no"]').length;
+        const method = document.querySelector('.card[data-method]')?.getAttribute('data-method') || 'unknown';
+        
+        debugInfo.innerHTML = `
+            <strong>🔍 超椭圆调试</strong><br>
+            设备: ${isIOS ? 'iOS' : '非iOS'}<br>
+            浏览器: ${isSafari ? 'Safari' : '其他'}<br>
+            方法: ${method}<br>
+            总卡片: ${cards.length}<br>
+            成功: ${appliedCount}<br>
+            失败: ${failedCount}
+        `;
+        
+        document.body.appendChild(debugInfo);
+        
+        // 点击关闭
+        debugInfo.addEventListener('click', () => debugInfo.remove());
+    }, 500);
+    */
+});
+</script>
+
+{% endblock %}

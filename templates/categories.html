@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="category-page">
+    <h2>Browse by Category</h2>
+    
+    <!-- 第一步: 将 "By Platform" 板块移到最上面 -->
+    <div class="category-section">
+        <h3>By Platform ({{ all_platforms|length }})</h3>
+        <div class="category-list">
+            {% for platform in all_platforms %}
+                <a href="{{ url_for('gallery', source_platform=platform) }}">{{ platform }}</a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 第二步: 将 "By Artist" 板块放在平台之后 -->
+    <div class="category-section">
+        <h3>By Artist ({{ all_artists|length }})</h3>
+        <div class="category-list">
+            {% for artist in all_artists %}
+                <a href="{{ url_for('gallery', artist=artist) }}">{{ artist }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="detail-container">
+        <div class="detail-image">
+            <img src="{{ url_for('image_proxy', artwork_id=artwork.id) }}" alt="{{ artwork.title or artwork.file_name }}">
+        </div>
+        <div class="detail-info">
+            <h2 class="artwork-title editable-field" data-field="title">{{ artwork.title or 'Untitled' }}</h2>
+            <hr>
+            
+            <!-- 基本信息区域 -->
+            <div class="info-section">
+                <div class="info-row">
+                    <strong>Artist:</strong> 
+                    <span class="editable-field" data-field="artist"><a href="{{ url_for('gallery', artist=artwork.artist) }}">{{ artwork.artist or 'Unknown' }}</a></span>
+                </div>
+                <div class="info-row">
+                    <strong>Platform:</strong> 
+                    <span class="editable-field" data-field="source_platform"><a href="{{ url_for('gallery', source_platform=artwork.source_platform) }}">{{ artwork.source_platform or 'Unknown' }}</a></span>
+                </div>
+                <div class="info-row">
+                    <strong>Published Date:</strong> 
+                    <span class="editable-field" data-field="publication_date">{{ artwork.publication_date or 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <strong>Description:</strong>
+                    <div class="editable-field multiline" data-field="description">
+                        {% if artwork.description %}
+                            {{ artwork.description|replace('\n', '<br>')|safe }}
+                        {% else %}
+                            No description available.
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-row">
+                    <strong>Tags:</strong>
+                    <span class="editable-field" data-field="tags">{{ artwork.tags or 'None' }}</span>
+                </div>
+
+                <!-- AI标签区域 -->
+                <div class="info-row">
+                    <strong>AI Generated Caption:</strong>
+                    <div class="ai-info editable-field multiline" data-field="ai_caption">
+                        {% if artwork.ai_caption %}
+                            <p class="ai-caption">{{ artwork.ai_caption }}</p>
+                        {% else %}
+                            <p class="ai-caption no-content">No AI caption available.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-row">
+                    <strong>AI Generated Tags:</strong>
+                    <div class="ai-info editable-field multiline" data-field="ai_tags">
+                        {% if artwork.ai_tags %}
+                            <pre class="ai-tags">{{ artwork.ai_tags }}</pre>
+                        {% else %}
+                            <p class="ai-tags no-content">No AI tags available.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 编辑按钮 (JS设备) -->
+            <button id="edit-fields-btn" class="edit-button">Edit Fields</button>
+            <button id="save-fields-btn" class="save-button" style="display: none;">Save Changes</button>
+            <button id="cancel-edit-btn" class="cancel-button" style="display: none;">Cancel</button>
+
+            <!-- 评分区域 -->
+            <div class="rating-section">
+                <strong>Rate this work:</strong>
+                <form class="rating-form" action="{{ url_for('rate_artwork', artwork_id=artwork.id) }}" method="post">
+                    {% for i in range(1, 11) %}
+                        <button type="submit" name="rating" value="{{ i }}" class="{{ 'rated' if artwork.rating and i <= artwork.rating }}">
+                            {% if artwork.rating and i <= artwork.rating %}★{% else %}☆{% endif %}
+                        </button>
+                    {% endfor %}
+                    <span class="current-rating">(Current: {{ artwork.rating or 'Unrated' }}/10)</span>
+                </form>
+            </div>
+
+            <!-- 分类管理区域 -->
+            <div class="classification-section">
+                <div class="classification-form">
+                    <strong>Classification:</strong>
+                    <form class="classification-form" action="{{ url_for('classify_artwork', artwork_id=artwork.id) }}" method="post">
+                        <select name="classification">
+                            <option value="sfw" {% if artwork.classification == 'sfw' %}selected{% endif %}>SFW (Safe For Work)</option>
+                            <option value="mature" {% if artwork.classification == 'mature' %}selected{% endif %}>Mature</option>
+                            <option value="nsfw" {% if artwork.classification == 'nsfw' %}selected{% endif %}>NSFW (Not Safe For Work)</option>
+                            <option value="unspecified" {% if not artwork.classification %}selected{% endif %}>Unspecified</option>
+                        </select>
+                        <!-- 非JS设备的提交按钮 -->
+                        <noscript>
+                            <button type="submit" class="no-js-submit-btn">Update Classification</button>
+                        </noscript>
+                    </form>
+                </div>
+
+                <div class="category-form">
+                    <strong>Category:</strong>
+                    <form class="category-form" action="{{ url_for('set_category', artwork_id=artwork.id) }}" method="post">
+                        <select name="category">
+                            <option value="fanart_non_comic" {% if artwork.category == 'fanart_non_comic' %}selected{% endif %}>Art</option>
+                            <option value="fanart_comic" {% if artwork.category == 'fanart_comic' %}selected{% endif %}>Comic</option>
+                            <option value="real_photo" {% if artwork.category == 'real_photo' %}selected{% endif %}>Photo</option>
+                            <option value="other" {% if artwork.category == 'other' %}selected{% endif %}>Other</option>
+                        </select>
+                        <!-- 非JS设备的提交按钮 -->
+                        <noscript>
+                            <button type="submit" class="no-js-submit-btn">Update Category</button>
+                        </noscript>
+                    </form>
+                </div>
+            </div>
+
+            <p class="file-path-info">File: {{ artwork.file_name }}</p>
+
+            <!-- 同系列图片 -->
+            {% if series_artworks %}
+            <div class="series-section">
+                <h3>Series</h3>
+                <div class="series-thumbnails">
+                    {% for series_artwork in series_artworks %}
+                    <a href="{{ url_for('artwork_detail', artwork_id=series_artwork.id) }}" class="series-thumbnail">
+                        <img src="{{ url_for('image_proxy', artwork_id=series_artwork.id) }}" alt="{{ series_artwork.title or series_artwork.file_name }}">
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="detail-actions">
+                <!-- 为不支持JS的设备添加表单 -->
+                <noscript>
+                    <form action="/find_similar/{{ artwork.id }}" method="get" style="display: inline;">
+                        <button type="submit" class="action-button">Find Similar</button>
+                    </form>
+                </noscript>
+                <!-- 支持JS的设备显示链接 -->
+                <a href="#" id="find-similar-btn" data-artwork-id="{{ artwork.id }}" class="action-button" style="display: none;">Find Similar</a>
+                <button id="delete-artwork-btn" data-artwork-id="{{ artwork.id }}" class="action-button danger">Delete</button>
+            </div>
+
+            <a href="{{ url_for('gallery') }}" class="back-link">&laquo; Back to Gallery</a>
+        </div>
+    </div>
+
+<script src="{{ url_for('static', filename='js/detail_page.js') }}"></script>
+{% endblock %}

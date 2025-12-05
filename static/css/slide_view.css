@@ -1,0 +1,281 @@
+/* Slide View CSS */
+.slide-view-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0rem 0;
+}
+
+.slide-image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 1rem auto; /* 改为auto确保居中 */
+    position: relative;
+    width: 100%;
+    max-width: 1200px; /* 增加最大宽度以适应大屏幕 */
+}
+
+.slide-image-wrapper {
+    width: 100%;
+    display: block;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    position: relative; /* 为绝对定位做准备 */
+    /* 增强兼容性 */
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+/* 图片宽高比容器 - 动态宽高比 */
+.image-aspect-container {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    /* 移除固定的padding-bottom，完全依赖内联样式 */
+    height: 0;
+    overflow: hidden;
+    background-color: #f5f5f5; /* 背景色 */
+}
+
+/* 渐进加载样式 - 图片现在在宽高比容器中绝对定位 */
+.slide-thumbnail, .slide-full-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* 保持比例缩放 */
+    object-position: center; /* 居中对齐 */
+    border-radius: 4px;
+    /* 增强兼容性 */
+    -webkit-transform: translateZ(0);
+    -moz-transform: translateZ(0);
+    -ms-transform: translateZ(0);
+    -o-transform: translateZ(0);
+    transform: translateZ(0);
+}
+
+.slide-thumbnail {
+    z-index: 1; /* 缩略图在下层 */
+}
+
+.slide-full-image {
+    z-index: 2; /* 全尺寸图在上层 */
+}
+
+/* 新的锚点元素样式 */
+.image-anchor {
+    position: absolute;
+    top: -50px; /* 在图像上方50像素处 */
+    height: 1px;
+    width: 1px;
+}
+
+/* 评分区域 */
+.slide-rating-section {
+    margin-bottom: 0.5rem;
+    width: 100%;
+    max-width: 600px;
+}
+
+.slide-rating-section .rating-form {
+    justify-content: center;
+}
+
+.slide-rating-section .star-rating {
+    display: flex;
+    justify-content: center;
+    gap: 0.2rem;
+}
+
+.slide-rating-section .star-button {
+    font-size: 2rem; /* 统一评分星星大小 */
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #ffffff;
+    transition: color 0.2s;
+}
+
+.slide-rating-section .star-button.rated {
+    color: #ffc107;
+}
+
+.slide-rating-section .star-button:hover,
+.slide-rating-section .star-button:focus {
+    color: #ffca28;
+    outline: none;
+}
+
+.slide-rating-section .current-rating {
+    margin-left: 1rem;
+    font-size: 1.1rem;
+}
+
+/* 图片信息区域 */
+.slide-info {
+    text-align: center;
+    margin-bottom: 0rem;
+    max-width: 1200px; /* 与图片容器宽度保持一致 */
+    width: 100%;
+}
+
+.slide-title {
+    font-size: 2rem;
+    margin: 0.5rem 0;
+}
+
+.slide-title a {
+    color: var(--font-color);
+    text-decoration: none;
+}
+
+.slide-title a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+.slide-artist {
+    font-size: 1.3rem;
+    margin: 0.5rem 0;
+}
+
+.slide-artist a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.slide-artist a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+/* 操作按钮区域 */
+.slide-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin: 0 0 1rem 0; /* 向上移动按钮区域 */
+    flex-wrap: nowrap;
+}
+
+.action-button {
+    padding: 0.8rem 1.5rem;
+    border: 1px solid var(--link-color);
+    background-color: var(--link-color);
+    color: black;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.action-button:hover {
+    background-color: var(--link-hover);
+    color: white;
+    text-decoration: none;
+}
+
+/* 无JS设备的特殊样式 */
+.no-js .slide-actions {
+    display: block;
+    text-align: center;
+    margin: 0 0 1rem 0; /* 向上移动按钮区域 */
+}
+
+.no-js .slide-actions a {
+    color: black;
+    text-decoration: none;
+    padding: 0 0.5rem;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    display: inline-block;
+}
+
+.no-js .slide-actions a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+    background: none;
+}
+
+/* 导航区域 */
+.slide-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.position-info {
+    font-size: 1.1rem;
+    color: #aaa;
+}
+
+/* 无JS设备的特殊样式 */
+.no-js .slide-actions button {
+    display: none;
+}
+
+/* 隐藏noscript中的按钮以防止重复显示 */
+.no-js .slide-actions + .slide-actions {
+    display: none;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .slide-view-container {
+        padding: 1rem 0;
+    }
+    
+    .slide-image-wrapper {
+        padding: 0rem;
+        min-height: 300px;
+        /* 增强兼容性 */
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+    }
+    
+    .slide-title {
+        font-size: 1.5rem;
+    }
+    
+    .slide-artist {
+        font-size: 1.1rem;
+    }
+    
+    .slide-actions {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .slide-rating-section .rating-form button {
+        font-size: 2rem; /* 统一评分星星大小 */
+    }
+    
+    /* 无JS设备在小屏幕上的样式 */
+    .no-js .slide-actions a {
+        display: inline-block;
+        margin: 0.2rem;
+    }
+}
+
+/* 动画效果（JS设备） */
+.js-enabled .slide-image-wrapper img {
+    transition: opacity 0.5s ease;
+}
+
+.js-enabled .image-fade-out {
+    opacity: 0;
+}
+
+.js-enabled .image-fade-in {
+    opacity: 1;
+}

@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="comic-reader">
+    <div class="comic-header">
+        <h1>{{ comic.title }}</h1>
+        {% if comic.artist %}
+        <p class="comic-artist">by {{ comic.artist }}</p>
+        {% endif %}
+        <p class="comic-info">{{ pages|length }} pages</p>
+        <a href="{{ url_for('comics') }}" class="back-link">← Back to Comics</a>
+    </div>
+
+    <div class="comic-pages">
+        {% for page in pages %}
+        <div class="comic-page">
+            <img src="{{ url_for('comic_page', file_path=page.file_path.replace('zootopia_comics/', '')) }}" alt="Page {{ page.page_number }}" style="width: 100%; height: auto; display: block; margin: 0; padding: 0;">
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.comic-reader {
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.comic-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+.comic-header h1 {
+    margin: 0 0 10px 0;
+    font-size: 2em;
+}
+
+.comic-artist {
+    margin: 5px 0;
+    color: #666;
+    font-style: italic;
+}
+
+.comic-info {
+    margin: 5px 0;
+    color: #888;
+}
+
+.back-link {
+    display: inline-block;
+    margin-top: 10px;
+    color: #007bff;
+    text-decoration: none;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.comic-pages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0; /* No gap between pages */
+    width: 100%;
+}
+
+.comic-page {
+    width: 100%;
+    max-width: 800px;
+    margin: 0;
+    padding: 0;
+}
+
+.comic-page img {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 800px) {
+    .comic-reader {
+        padding: 0;
+    }
+
+    .comic-header h1 {
+        font-size: 1.5em;
+    }
+
+    .comic-page {
+        max-width: 100%;
+    }
+}
+</style>
+{% endblock %}

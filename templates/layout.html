@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% if request.endpoint and 'comics' in request.endpoint %}Zootopia Comics{% else %}Zootopia Fanart Gallery{% endif %}</title>
+    
+    <!-- iOS Web App 优化 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Zootopia Gallery">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- PWA 主题颜色 -->
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="msapplication-TileColor" content="#1a1a1a">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/image_search.css') }}">
+</head>
+<body>
+    <script>
+        // 检测JS支持
+        document.documentElement.classList.remove('no-js');
+        document.documentElement.classList.add('js-enabled');
+    </script>
+    <header>
+        <h1><a href="{{ url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
+        <nav id="main-nav">
+            <a href="{{ url_for('categories_list') }}">Categories</a>
+            <a href="{{ url_for('image_wall', sort='random') }}">Image Wall</a>
+            <a href="{{ url_for('slide_view', sort='random') }}">Slide View</a>
+            <a href="{{ url_for('gallery', sort='random') }}">Random</a>
+            <a href="{{ url_for('comics') }}">Comics</a>
+            <a href="#" id="image-search-trigger">Search by Image</a>
+            <a href="{{ url_for('add_artwork_page') }}">Add Artwork</a>
+            <a href="{{ url_for('statistics') }}">Statistics</a>
+            <a href="{{ url_for('monitoring') }}">Monitoring</a>
+        </nav>
+        <div class="header-right">
+            <form class="search-form" action="{{ url_for('gallery') }}" method="get">
+                <input type="text" name="q" placeholder="Search..." value="{{ current_filters.q or '' }}">
+                <button type="submit">Go</button>
+            </form>
+            <button class="hamburger-menu" id="hamburger-menu" aria-label="Toggle navigation menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
+        </div>
+    </header>
+    <main id="page-top">
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>A Personal Collection</p>
+    </footer>
+
+    <!-- Hamburger Menu Overlay -->
+    <div class="menu-overlay" id="menu-overlay"></div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/image_search.js') }}"></script>
+    <script>
+        // Hamburger menu functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const hamburgerMenu = document.getElementById('hamburger-menu');
+            const mainNav = document.getElementById('main-nav');
+            const menuOverlay = document.getElementById('menu-overlay');
+
+            function toggleMenu() {
+                hamburgerMenu.classList.toggle('active');
+                mainNav.classList.toggle('open');
+                menuOverlay.classList.toggle('active');
+                document.body.style.overflow = mainNav.classList.contains('open') ? 'hidden' : '';
+            }
+
+            function closeMenu() {
+                hamburgerMenu.classList.remove('active');
+                mainNav.classList.remove('open');
+                menuOverlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+
+            hamburgerMenu.addEventListener('click', toggleMenu);
+            menuOverlay.addEventListener('click', closeMenu);
+
+            // Close menu when clicking on a nav link
+            mainNav.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    closeMenu();
+                }
+            });
+
+            // Close menu on window resize if screen becomes larger
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 500) {
+                    closeMenu();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

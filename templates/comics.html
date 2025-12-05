@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="controls-container">
+    <!-- Search and filters for comics -->
+    <span class="filter-label">Comics</span>
+    <span class="separator">|</span>
+    <span class="filter-label">Sort:</span>
+    <a href="{{ url_for('comics', sort='newest') }}" class="{{ 'active' if request.args.get('sort') == 'newest' }}">Newest</a>
+    <a href="{{ url_for('comics', sort='oldest') }}" class="{{ 'active' if request.args.get('sort') == 'oldest' }}">Oldest</a>
+    <a href="{{ url_for('comics', sort='title') }}" class="{{ 'active' if request.args.get('sort') == 'title' }}">Title</a>
+</div>
+
+<div class="gallery-grid">
+    {% for comic in comics %}
+        <div class="card" id="comic-{{ comic.id }}">
+            <a href="{{ url_for('comic_reader', comic_id=comic.id) }}#page-top" class="card-image-link">
+                {% if config.ENABLE_FULL_RES_CARD_IMAGES and comic.first_page_path %}
+                    <img src="{{ url_for('comic_page', file_path=comic.first_page_path.replace('zootopia_comics/', '')) }}" alt="{{ comic.title }}" loading="lazy">
+                {% elif comic.thumbnail_filename %}
+                    <img src="{{ url_for('comics_thumbnail', filename=comic.thumbnail_filename) }}" alt="{{ comic.title }}" loading="lazy">
+                {% else %}
+                    <img src="{{ url_for('static', filename='default_comic.jpg') }}" alt="{{ comic.title }}" loading="lazy">
+                {% endif %}
+            </a>
+            <div class="card-info">
+                <p class="artist">{{ comic.artist or 'Unknown' }}</p>
+                <p class="title">
+                    <a href="{{ url_for('comic_reader', comic_id=comic.id) }}#page-top">{{ comic.title }}</a>
+                </p>
+                <p class="pages">{{ comic.page_count }} pages</p>
+                {% if comic.rating %}
+                <div class="rating-display">
+                    {% for i in range(1, 11) %}
+                        {% if i <= comic.rating %}★{% else %}☆{% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <p>No comics found.</p>
+    {% endfor %}
+</div>
+
+<div class="pagination">
+    {% if page > 1 %}
+        <a href="{{ url_for('comics', **generate_url_params('page', page - 1)) }}">« Prev</a>
+    {% endif %}
+
+    <form action="{{ url_for('comics') }}" method="get" class="page-jump-form">
+        <span>Page</span>
+        <input type="number" name="page" value="{{ page }}" min="1" max="{{ total_pages }}">
+        <span>of {{ total_pages }}</span>
+        <button type="submit">Go</button>
+        {% for key, value in request.args.items() %}
+            {% if key != 'page' %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endif %}
+        {% endfor %}
+    </form>
+
+    {% if page < total_pages %}
+        <a href="{{ url_for('comics', **generate_url_params('page', page + 1)) }}">» Next »</a>
+    {% endif %}
+</div>
+{% endblock %}

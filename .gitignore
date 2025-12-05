@@ -1,0 +1,82 @@
+# API密钥和敏感配置
+api_keys.py
+*.key
+*.pem
+*.env
+
+# 数据库文件
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Python缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv
+
+# IDE配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志文件
+logs/
+*.log
+
+# 临时文件和上传
+temp_uploads/
+static/temp_uploads/
+*.tmp
+*.temp
+
+# 图片和媒体文件（根据需要调整）
+zootopia_pics/
+zootopia_comics/
+static/thumbnails/
+static/comics_thumbnails/
+
+# 垃圾箱
+trash/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Gallery-dl配置（包含cookies和个人配置）
+gallery-dl/
+
+# 备份文件
+*.bak
+*.backup
+*~
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+
+# 测试覆盖率
+.coverage
+htmlcov/
+.pytest_cache/
+
+# 分发/打包
+dist/
+build/
+*.egg-info/
+
+# Kiro IDE配置
+.kiro/
+.spec-workflow/

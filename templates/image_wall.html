@@ -1,0 +1,433 @@
+{% extends "layout.html" %}
+{% block content %}
+<style>
+    /* 瀑布流布局：每列独立垂直排列 */
+    .gallery-grid {
+        display: flex !important;
+        /* 根据列数动态调整间隔：基础1.5rem，列数越多间隔越小 */
+        gap: {{ 1.5 / (columns / 4) }}rem !important;
+        padding: 20px;
+        align-items: flex-start !important;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .masonry-column {
+        flex: 1 1 0; /* 每列等宽 */
+        min-width: 0; /* 防止flex子元素溢出 */
+        display: flex;
+        flex-direction: column;
+        gap: {{ 1.5 / (columns / 4) }}rem !important;
+    }
+    
+    /* 卡片不需要额外的margin */
+    .gallery-grid .card {
+        margin-bottom: 0 !important;
+        break-inside: avoid; /* 防止卡片被分割 */
+    }
+    
+    /* 图片自然高度显示 */
+    .gallery-grid .card-image-link {
+        display: block;
+        overflow: hidden;
+        width: 100%;
+    }
+    
+    .gallery-grid .card-image-link img {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        display: block;
+        background-color: #f0f0f0; /* 加载前的占位背景 */
+    }
+    
+    /* NSFW/MATURE图片模糊处理 */
+    .gallery-grid .card-image-link img.blur-image {
+        filter: blur(5px);
+        transition: filter 0.3s;
+    }
+    
+    .gallery-grid .card-image-link:hover img.blur-image {
+        filter: blur(0);
+    }
+    
+    /* 确保卡片不溢出 */
+    .gallery-grid .card {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+
+    
+    /* 根据列数动态调整星星大小 */
+    .gallery-grid .rating-form button {
+        font-size: {{ 1.2 / (columns / 4) }}rem !important;
+        padding: {{ 0.2 / (columns / 4) }}rem {{ 0.3 / (columns / 4) }}rem !important;
+    }
+    
+    /* 根据列数动态调整文字大小 */
+    .gallery-grid .card-info .artist {
+        font-size: {{ 0.9 / (columns / 4) }}rem !important;
+    }
+    
+    .gallery-grid .card-info .title {
+        font-size: {{ 0.85 / (columns / 4) }}rem !important;
+    }
+    
+    /* 根据列数动态调整分类标签大小 */
+    .gallery-grid .card-classification {
+        font-size: {{ 0.7 / (columns / 4) }}rem !important;
+        padding: {{ 0.2 / (columns / 4) }}rem {{ 0.4 / (columns / 4) }}rem !important;
+    }
+    
+    /* 根据列数动态调整卡片信息区域 */
+    .gallery-grid .card-info {
+        padding: {{ 0.75 / (columns / 4) }}rem !important;
+    }
+    
+    .gallery-grid .card-info p {
+        margin: {{ 0.25 / (columns / 4) }}rem 0 !important;
+    }
+    
+    /* 覆盖响应式媒体查询 */
+    @media (max-width: 1200px) {
+        .gallery-grid { 
+            grid-template-columns: repeat({{ columns }}, 1fr) !important;
+        }
+    }
+    @media (max-width: 900px) {
+        .gallery-grid { 
+            grid-template-columns: repeat({{ columns }}, 1fr) !important;
+        }
+    }
+    @media (max-width: 600px) {
+        .gallery-grid { 
+            grid-template-columns: repeat({{ columns }}, 1fr) !important;
+        }
+    }
+</style>
+
+<div class="controls-container">
+    <!-- Sort Group -->
+    <span class="filter-label">Sort:</span>
+    <a href="{{ url_for('image_wall', **generate_url_params('sort', 'newest')) }}" class="{{ 'active' if current_sort == 'newest' }}">Newest</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('sort', 'oldest')) }}" class="{{ 'active' if current_sort == 'oldest' }}">Oldest</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('sort', 'latest_added')) }}" class="{{ 'active' if current_sort == 'latest_added' }}">Latest Added</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('sort', 'rating')) }}" class="{{ 'active' if current_sort == 'rating' }}">Rating</a>
+
+    <span class="separator">|</span>
+
+    <!-- Classification Group -->
+    <span class="filter-label">Class:</span>
+    <a href="{{ url_for('image_wall', **generate_url_params('classification_filter', 'unspecified')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'unspecified' }}">Unspecified</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('classification_filter', 'sfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'sfw' }}">SFW</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('classification_filter', 'mature')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'mature' }}">Mature</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('classification_filter', 'nsfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'nsfw' }}">NSFW</a>
+
+    <span class="separator">|</span>
+
+    <!-- Category Group -->
+    <span class="filter-label">Category:</span>
+    <a href="{{ url_for('image_wall', **generate_url_params('category', 'fanart_non_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_non_comic' }}">Art</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('category', 'fanart_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_comic' }}">Comic</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('category', 'real_photo')) }}" class="{{ 'active' if current_filters.get('category') == 'real_photo' }}">Photo</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
+
+    <span class="separator">|</span>
+
+    <!-- Rating Group -->
+    <span class="filter-label">Rating:</span>
+    <a href="{{ url_for('image_wall', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('rating_filter', '2_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '2_plus' }}">2★+</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
+    <a href="{{ url_for('image_wall', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>
+
+    <span class="separator">|</span>
+
+    <!-- Columns Control -->
+    <span class="filter-label">Columns:</span>
+    {% set columns_params = current_filters.copy() %}
+    {% set _ = columns_params.update({'columns': 2}) %}
+    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 2 }}">2</a>
+    {% set _ = columns_params.update({'columns': 3}) %}
+    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 3 }}">3</a>
+    {% set _ = columns_params.update({'columns': 4}) %}
+    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 4 }}">4</a>
+    {% set _ = columns_params.update({'columns': 5}) %}
+    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 5 }}">5</a>
+    {% set _ = columns_params.update({'columns': 6}) %}
+    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 6 }}">6</a>
+    {% set _ = columns_params.update({'columns': 8}) %}
+    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 8 }}">8</a>
+</div>
+
+    {% if current_filters %}
+    <div class="active-filters">
+        <span>Active Filters:</span>
+        {% for key, value in current_filters.items() %}
+            {% if key == 'similar_to' %}
+                <a href="{{ url_for('image_wall', **generate_url_params(key, None)) }}" class="filter-pill">
+                    Similar Images (Threshold: {{ current_filters.get('threshold', '10') }}) &times;
+                </a>
+            {% elif key not in ['sort', 'seed', 'columns'] %}
+                <a href="{{ url_for('image_wall', **generate_url_params(key, None)) }}" class="filter-pill">
+                    {{ key }}: {{ value }} &times;
+                </a>
+            {% endif %}
+        {% endfor %}
+        <a href="{{ url_for('image_wall', sort='random', columns=columns) }}" class="filter-pill clear-all">Clear All</a>
+    </div>
+    {% endif %}
+
+    <!-- Search by Image Modal -->
+    <div id="image-search-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Search by Image</h2>
+            <div id="image-drop-zone" class="drop-zone">
+                <p>Drag & Drop an image file here, or click to select a file.</p>
+                <input type="file" id="file-input" name="search_file">
+                <img id="image-preview" src="#" alt="Image Preview" class="hidden"/>
+            </div>
+            <div class="threshold-container">
+                <label for="threshold-slider">Threshold: <span id="threshold-value">10</span></label>
+                <input type="range" id="threshold-slider" class="threshold-slider" name="threshold" min="0" max="20" value="10">
+            </div>
+            <button id="search-button" class="search-button">Search</button>
+            <div id="search-status" class="search-status"></div>
+        </div>
+    </div>
+
+    <!-- Total Images Count -->
+    <div class="total-count">
+        <span>Total Images: {{ total_artworks }}</span>
+    </div>
+
+    <div class="gallery-grid">
+        {% for col in range(columns) %}
+            <div class="masonry-column">
+                {% for art in artworks %}
+                    {% if artwork_columns[loop.index0] == col %}
+                        <div class="card" id="artwork-{{ art.id }}">
+                            <a href="{{ url_for('artwork_detail', artwork_id=art.id) }}#page-top" class="card-image-link">
+                                <img src="{{ url_for('static', filename='thumbnails/' + (art.thumbnail_filename or 'default.jpg')) }}" 
+                                     alt="{{ art.title or art.file_name }}" 
+                                     loading="lazy"
+                                     class="{% if art.classification == 'nsfw' %}blur-image{% endif %}"
+                                     {% if aspect_ratios.get(art.id) %}
+                                     style="aspect-ratio: {{ aspect_ratios.get(art.id) }};"
+                                     {% endif %}>
+                            </a>
+                            {% if art.classification in ['unspecified', 'mature', 'nsfw'] or art.classification is none %}
+                                <div class="card-classification">{{ art.classification|title if art.classification else 'Unspecified' }}</div>
+                            {% endif %}
+                            <div class="card-info">
+                                <p class="artist"><a href="{{ url_for('image_wall', artist=art.artist, columns=columns) }}">{{ art.artist or 'Unknown' }}</a></p>
+                                <p class="title">
+                                    <a href="{{ url_for('artwork_detail', artwork_id=art.id) }}#page-top">{{ art.title or 'Untitled' }}</a>
+                                </p>
+                                <div class="rating-form">
+                                    <form action="{{ url_for('rate_artwork', artwork_id=art.id) }}" method="post">
+                                        {% for i in range(1, 11) %}
+                                            <button type="submit" name="rating" value="{{ i }}" class="{{ 'rated' if art.rating and i <= art.rating }}">
+                                                {% if art.rating and i <= art.rating %}★{% else %}☆{% endif %}
+                                            </button>
+                                        {% endfor %}
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+    
+    {% if not artworks %}
+        <p>No artworks found matching your criteria.</p>
+    {% endif %}
+
+    <!-- 滚动位置指示器 -->
+    <div id="scroll-indicator">
+        <span id="current-image">0</span>
+    </div>
+    
+    <!-- 底部padding，让所有图片可以划出屏幕 -->
+    <div style="height: 100vh;"></div>
+
+<script>
+// 滚动位置指示器 - 显示从页面顶部到当前视口底部的图片数量
+document.addEventListener('DOMContentLoaded', function() {
+    const indicator = document.getElementById('scroll-indicator');
+    const currentImageSpan = document.getElementById('current-image');
+    const cards = document.querySelectorAll('.card');
+    
+    if (cards.length === 0) return;
+    
+    const totalCards = cards.length;
+    let isReady = false;
+    let cardPositions = []; // 缓存卡片绝对位置
+    let lastCount = 0;
+    let positionsCached = false;
+    
+    // 一次性缓存所有卡片的绝对位置
+    function cacheCardPositions() {
+        console.log('缓存', totalCards, '个卡片位置...');
+        const startTime = performance.now();
+        
+        cardPositions = [];
+        cards.forEach((card) => {
+            const rect = card.getBoundingClientRect();
+            // 计算卡片相对于文档顶部的绝对位置
+            cardPositions.push(window.scrollY + rect.top);
+        });
+        
+        // 确保位置数组是排序的（应该已经是了，但保险起见）
+        cardPositions.sort((a, b) => a - b);
+        positionsCached = true;
+        
+        const endTime = performance.now();
+        console.log(`位置缓存完成，耗时: ${(endTime - startTime).toFixed(2)}ms`);
+    }
+    
+    // 使用二分查找快速计算计数
+    function calculateCount(viewportBottom) {
+        if (!positionsCached || cardPositions.length === 0) {
+            return 0;
+        }
+        
+        // 二分查找：找到第一个位置 > viewportBottom 的索引
+        let left = 0;
+        let right = cardPositions.length - 1;
+        let result = cardPositions.length; // 默认所有卡片都在视口上方
+        
+        while (left <= right) {
+            const mid = Math.floor((left + right) / 2);
+            if (cardPositions[mid] <= viewportBottom) {
+                left = mid + 1;
+            } else {
+                result = mid;
+                right = mid - 1;
+            }
+        }
+        
+        return result;
+    }
+    
+    // 动画更新函数（高频率，只处理动画）
+    function updateAnimation() {
+        // 计算当前滚动位置到页面最底端的距离
+        const documentHeight = document.documentElement.scrollHeight;
+        const currentScrollBottom = window.scrollY + window.innerHeight;
+        const distanceToPageBottom = documentHeight - currentScrollBottom;
+        
+        // 计算动画进度：当距离从3屏高度缩小到0时，进度从0到1
+        const animationRange = window.innerHeight * 3; // 3屏高度的过渡段
+        const progress = Math.max(0, Math.min(1, 1 - (distanceToPageBottom / animationRange)));
+        
+        // 计算缩放：从1到2（线性）
+        const scale = 1 + progress;
+        // 计算背景透明度：从0.8到0（线性）
+        const bgOpacity = 0.8 * (1 - progress);
+        // 计算垂直位置：从bottom 20px到50%（线性）
+        const bottomValue = 20 + (50 - 20) * progress;
+        
+        // 应用样式，使用CSS transition实现快速缓动
+        indicator.style.bottom = `${bottomValue}%`;
+        indicator.style.transform = `translate(-50%, 50%) scale(${scale})`;
+        indicator.style.background = `rgba(0, 0, 0, ${bgOpacity})`;
+        indicator.style.boxShadow = bgOpacity > 0 ? `0 4px 12px rgba(0, 0, 0, ${bgOpacity * 0.375})` : 'none';
+    }
+    
+    // 计数更新函数（现在很快，可以高频率调用）
+    function updateCount() {
+        if (!positionsCached) return;
+        
+        const viewportBottom = window.scrollY + window.innerHeight;
+        const count = calculateCount(viewportBottom);
+        
+        // 只有当计数大于0时才显示指示器（说明布局已经完成）
+        if (count > 0 && !isReady) {
+            isReady = true;
+            indicator.style.opacity = '1';
+        }
+        
+        // 只有计数变化时才更新DOM
+        if (count !== lastCount) {
+            currentImageSpan.textContent = count;
+            lastCount = count;
+        }
+    }
+    
+    // 监听滚动事件：分离动画和计数更新
+    window.addEventListener('scroll', () => {
+        updateAnimation(); // 立即更新动画
+        updateCount(); // 现在很快，可以立即更新
+    }, { passive: true });
+    
+    // 监听窗口大小变化：需要重新缓存位置
+    window.addEventListener('resize', () => {
+        positionsCached = false; // 标记需要重新缓存
+        updateAnimation();
+        // 延迟重新缓存，等待布局稳定
+        setTimeout(() => {
+            cacheCardPositions();
+            updateCount();
+        }, 100);
+    }, { passive: true });
+    
+    // 等待页面完全加载后初始化
+    function initializeWhenReady() {
+        // 检查是否有卡片已经渲染并有实际尺寸
+        const firstCard = cards[0];
+        if (firstCard && firstCard.getBoundingClientRect().height > 0) {
+            cacheCardPositions(); // 缓存所有位置
+            updateAnimation();
+            updateCount();
+        } else {
+            // 如果还没准备好，继续等待
+            setTimeout(initializeWhenReady, 200);
+        }
+    }
+    
+    // 页面加载完成后开始检查
+    if (document.readyState === 'complete') {
+        initializeWhenReady();
+    } else {
+        window.addEventListener('load', initializeWhenReady);
+    }
+});
+</script>
+
+<style>
+#scroll-indicator {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px 40px;
+    border-radius: 30px;
+    font-size: 3rem;
+    font-weight: bold;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    /* 初始隐藏，等待布局完成 */
+    opacity: 0;
+    /* 更长的平滑时间：0.5秒，ease-out让动画快速开始然后平滑结束 */
+    transition: transform 0.5s ease-out, 
+                bottom 0.5s ease-out, 
+                background 0.5s ease-out, 
+                box-shadow 0.5s ease-out,
+                opacity 0.3s ease-out;
+}
+
+#scroll-indicator #current-image {
+    color: #4CAF50;
+    font-size: 3.6rem;
+}
+</style>
+
+{% endblock %}

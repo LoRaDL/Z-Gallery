@@ -1,0 +1,1486 @@
+/* A simple, dark, and functional theme */
+:root {
+    --bg-color: #1a1a1a;
+    --card-color: #2a2a2a;
+    --font-color: #e0e0e0;
+    --link-color: #5786eb;
+    --link-hover: #839cec;
+    --border-color: #444;
+    --star-rated: #f7d94f;
+    --star-unrated: #555;
+}
+
+body {
+    font-family: sans-serif;
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+header {
+    background-color: var(--card-color);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+header h1 a {
+    color: var(--font-color);
+    text-decoration: none;
+}
+
+.search-form input {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    border-radius: 0.5rem; /* 更小的圆角 */
+}
+.search-form button {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--link-color);
+    background-color: var(--link-color);
+    color: #fff;
+    cursor: pointer;
+    border-radius: 0.5rem; /* 更小的圆角 */
+    height: calc(1rem + 2px + 2*0.5rem - 2px); /* 减小2个像素高度 */
+    box-sizing: border-box;
+}
+
+main {
+    padding: 1rem 0rem;
+}
+
+.filter-bar {
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.filter-bar a {
+    margin-right: 1rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+}
+.filter-bar a.active {
+    background-color: var(--link-color);
+    color: #fff;
+    font-weight: bold;
+}
+
+.gallery-grid {
+    display: flex;
+    gap: 1.5rem;
+    padding: 20px;
+    align-items: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.masonry-column {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* 无 JavaScript 降级：默认只显示第一列 */
+.masonry-column:nth-child(n+2) {
+    display: none;
+}
+
+/* 当 JavaScript 启用时，根据屏幕宽度显示对应的列 */
+/* 这些规则会在 JavaScript 添加 js-enabled 类后生效 */
+.js-enabled .masonry-column:nth-child(1) {
+    display: flex;
+}
+
+/* 大屏幕：显示4列 */
+@media (min-width: 1201px) {
+    .js-enabled .masonry-column:nth-child(-n+4) {
+        display: flex;
+    }
+}
+
+/* 中等屏幕：显示3列 */
+@media (min-width: 901px) and (max-width: 1200px) {
+    .js-enabled .masonry-column:nth-child(-n+3) {
+        display: flex;
+    }
+}
+
+/* 小屏幕：显示2列 */
+@media (min-width: 601px) and (max-width: 900px) {
+    .js-enabled .masonry-column:nth-child(-n+2) {
+        display: flex;
+    }
+}
+
+/* 手机屏幕：显示1列（已经是默认的） */
+
+/* 响应式布局：JavaScript 会动态调整列数和卡片分配 */
+/* 只调整间距 */
+
+/* 中等屏幕 */
+@media (max-width: 1200px) {
+    .gallery-grid { gap: 1.2rem; }
+    .masonry-column { gap: 1.2rem; }
+}
+
+/* 小屏幕 */
+@media (max-width: 900px) {
+    .gallery-grid { gap: 1rem; }
+    .masonry-column { gap: 1rem; }
+}
+
+/* 手机屏幕：单列时移除左右边距 */
+@media (max-width: 600px) {
+    .gallery-grid { 
+        gap: 0.8rem;
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .masonry-column { gap: 0.8rem; }
+}
+
+/* 无 JS 设备单列布局：移除左右边距 */
+.gallery-grid:not(.js-enabled) {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.card {
+    background-color: var(--card-color);
+    /* 移除边框 */
+    /* Apple 风格的超椭圆圆角 - G2 连续曲率，真正的超椭圆公式 */
+    /* 降级方案：如果 clip-path/mask 不支持，使用普通圆角 */
+    border-radius: 20px;
+    /* clip-path 或 mask-image 会通过 JavaScript 动态设置 */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    break-inside: avoid;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* 如果 clip-path 或 mask 已应用，移除降级的 border-radius */
+.card[data-squircle="applied"] {
+    border-radius: 0;
+}
+
+/* iOS Safari 特殊处理：确保 mask 正确应用 */
+.card[data-method="mask"] {
+    -webkit-mask-composite: source-over;
+    mask-composite: add;
+}
+.card a {
+    display: block;
+}
+.card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    background-color: var(--bg-color);
+}
+
+.card-classification {
+    color: #888;
+    font-size: 0.8em;
+    font-weight: 500;
+    text-transform: uppercase;
+    padding: 0.1rem 0.5rem;
+    margin: 0.2rem 0 0.1rem 0;
+    text-align: left;
+}
+
+/* 专门为JS创建的、包裹图片的链接设置样式 */
+.card > a:first-child {
+    display: block;
+    text-decoration: none;
+}
+
+/* 为标题中的链接设置样式 */
+.card .title a {
+    color: inherit; /* 继承父元素 <p> 的颜色 */
+    text-decoration: none; /* 默认无下划线 */
+}
+
+.card .title a:hover {
+    text-decoration: underline; /* 鼠标悬停时显示下划线 */
+}
+
+.card-info {
+    padding: 1rem;
+    margin-top: -0.5rem;
+}
+.card-info p {
+    margin: 0.3rem 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.card-info .artist a {
+    font-weight: bold;
+}
+.card-info .title {
+    color: #aaa;
+    font-size: 0.9em;
+}
+
+.rating-form form {
+    display: flex; /* 启用 Flexbox 布局 */
+    justify-content: center; /* 元素在主轴上（水平）居中 */
+    align-items: center; /* 元素在交叉轴上（垂直）居中 */
+    width: 100%; /* 确保表单占据其父容器的全部宽度 */
+}
+
+.rating-form form button {
+    background: none;
+    border: none;
+    color: var(--star-unrated);
+    padding: 0;
+    font-size: 1.2em;
+    cursor: pointer;
+    flex: 1; 
+}
+.rating-form form button.rated {
+    color: var(--star-rated);
+}
+.rating-form form button.pending {
+    color: var(--star-rated);
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+/* Add Artwork Page Rating Styles */
+#rating-form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: calc(2.5rem + 2px); /* Match input field height (padding + border) */
+    margin-top: -0.5rem; /* 上移一点 */
+}
+
+#rating-form .rating-star {
+    background: none;
+    border: none;
+    color: var(--star-unrated);
+    padding: 0;
+    font-size: 1.5em; /* Increased size */
+    cursor: pointer;
+    flex: 1;
+    outline: none; /* Remove focus outline */
+    height: 100%; /* Make stars fill container height */
+}
+
+#rating-form .rating-star.rated {
+    color: var(--star-rated);
+}
+
+#rating-form .rating-reset {
+    background: none;
+    border: none;
+    color: var(--star-unrated);
+    padding: 0 0.5em; /* Add some padding */
+}
+
+/* Slideshow Mode Styles */
+.slideshow-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.slideshow-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.slideshow-image-container {
+    width: 100%;
+    max-width: 800px;
+    display: flex;
+    justify-content: center;
+}
+
+.slideshow-image {
+    max-width: 100%;
+    max-height: 600px;
+    object-fit: contain;
+    background-color: var(--bg-color);
+}
+
+.slideshow-info {
+    width: 100%;
+    max-width: 800px;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.slideshow-info .artwork-title {
+    margin: 0;
+    text-align: center;
+}
+
+.slideshow-info .artist {
+    text-align: center;
+    font-size: 1.1em;
+}
+
+.slideshow-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+}
+
+.nav-button {
+    padding: 0.5rem 1rem;
+    background-color: var(--link-color);
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.nav-button:hover {
+    background-color: var(--link-hover);
+    text-decoration: none;
+}
+
+.detail-link {
+    background-color: #6c757d;
+}
+
+.detail-link:hover {
+    background-color: #5a6268;
+}
+
+.rating-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rating-form-detail {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.rating-form-detail button {
+    background: none;
+    border: none;
+    color: var(--star-unrated);
+    padding: 0.2rem;
+    font-size: 1.5em;
+    cursor: pointer;
+    flex: 1;
+}
+
+.rating-form-detail button.rated {
+    color: var(--star-rated);
+}
+
+.current-rating {
+    margin-left: 1rem;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+
+/* 同系列图片样式 */
+.series-section {
+    margin: 2rem 0;
+}
+
+.series-section h3 {
+    margin-bottom: 1rem;
+    color: var(--font-color);
+}
+
+.series-thumbnails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.series-thumbnail {
+    display: block;
+    width: 100px;
+    height: 100px;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+    transition: border-color 0.3s ease;
+}
+
+.series-thumbnail:hover {
+    border-color: var(--link-color);
+    text-decoration: none;
+}
+
+.series-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+#rating-form .rating-reset {
+    font-size: 1.5em; /* Match star size */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%; /* Make reset button fill container height */
+}
+
+#rating-form .rating-reset:hover {
+    color: #dc3545; /* Red color on hover */
+}
+
+.pagination {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Prev/Next 按钮行 */
+.pagination-nav {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+}
+
+.pagination-nav a {
+    font-size: 1.2em;
+}
+
+/* Page 表单行 */
+.pagination .page-jump-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination .page-jump-form span {
+    font-size: 1.2em;
+}
+
+/* Detail Page */
+.detail-container {
+    display: flex;
+    gap: 2rem;
+    max-width: 1400px;
+    margin: auto;
+}
+.detail-image {
+    flex: 2;
+}
+.detail-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+.detail-info {
+    flex: 1;
+    padding: 1rem;
+    background-color: var(--card-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+/* 标题样式 */
+.artwork-title {
+    margin: 0 0 1rem 0;
+    font-size: 1.8rem;
+    color: var(--font-color);
+    border-bottom: 2px solid var(--link-color);
+    padding-bottom: 0.5rem;
+}
+
+/* 标题编辑模式下的样式 */
+.artwork-title.edit-input {
+    font-size: 1.8rem;
+    font-weight: bold;
+    border: 2px solid var(--link-color);
+    border-radius: 4px;
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    padding: 0.5rem;
+    margin: 0 0 1rem 0;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+/* 信息区域样式 */
+.info-section {
+    margin: 1.5rem 0;
+}
+
+/* AI标签区域样式 */
+.ai-info {
+    background-color: rgba(74, 144, 226, 0.05);
+    border-left: 3px solid var(--link-color);
+    padding: 0.8rem;
+    border-radius: 6px;
+    margin-top: 0.5rem;
+}
+
+.ai-info .ai-caption {
+    font-size: 0.9em;
+    line-height: 1.5;
+    color: var(--font-color);
+    margin-bottom: 0.5rem;
+    font-style: italic;
+}
+
+.ai-info .ai-tags {
+    color: var(--font-color);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85em;
+    line-height: 1.6;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.8rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.ai-info .no-content {
+    color: #888;
+    font-style: normal;
+    font-size: 0.85em;
+}
+
+.info-row {
+    display: flex;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+    align-items: flex-start;
+}
+
+.info-row strong {
+    min-width: 140px;
+    color: var(--link-color);
+    font-weight: 600;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.info-row .editable-field {
+    flex: 1;
+    color: var(--font-color);
+    word-break: break-word;
+}
+
+.info-row .editable-field a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.info-row .editable-field a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+.info-row .editable-field.multiline {
+    white-space: pre-line;
+    line-height: 1.5;
+}
+
+.edit-button, .save-button, .cancel-button {
+    padding: 0.6rem 1.2rem;
+    margin: 0 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    margin: 1.5rem 0;
+}
+
+.edit-button {
+    background-color: #9ec260;
+    color: white;
+}
+
+.edit-button:hover {
+    background-color: #9ec260;
+}
+
+.save-button {
+    background-color: #28a745;
+    color: white;
+}
+
+.save-button:hover {
+    background-color: #218838;
+}
+
+.save-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+}
+
+.cancel-button {
+    background-color: #dc3545;
+    color: white;
+}
+
+.cancel-button:hover {
+    background-color: #c82333;
+}
+
+/* 编辑输入框样式 */
+.edit-input, .edit-textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 2px solid var(--link-color);
+    border-radius: 4px;
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.edit-input:focus, .edit-textarea:focus {
+    outline: none;
+    border-color: var(--link-hover);
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.edit-textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* 非JS设备的信息字段样式 - 只做美观展示 */
+.info-row .editable-field {
+    flex: 1;
+    color: var(--font-color);
+    word-break: break-word;
+    padding: 0.3rem 0;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.info-row .editable-field:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+.info-row .editable-field.multiline {
+    white-space: pre-line;
+    line-height: 1.5;
+    padding: 0.5rem;
+    background-color: rgba(74, 144, 226, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid var(--link-color);
+}
+
+.rating-section {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background-color: var(--bg-color);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.rating-section strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--link-color);
+    font-weight: 600;
+}
+
+.rating-section form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+}
+
+.rating-section form button {
+    background: none;
+    border: none;
+    color: var(--star-unrated);
+    padding: 0;
+    font-size: 1.8em;
+    cursor: pointer;
+    flex: 1;
+    min-width: 30px;
+    transition: color 0.2s ease;
+}
+
+.rating-section form button:hover {
+    color: var(--star-rated);
+}
+
+.rating-section form button.rated {
+    color: var(--star-rated);
+}
+
+.current-rating {
+    width: 100%;
+    text-align: center;
+    margin-top: 0.5rem;
+    color: var(--font-color);
+    font-size: 0.9rem;
+}
+
+footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    color: #777;
+    font-size: 0.9em;
+}
+
+.page-jump-form {
+    display: inline-block;
+    margin: 0 1rem;
+}
+.page-jump-form input[type="number"] {
+    width: 60px;
+    text-align: center;
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 0.2rem;
+}
+.page-jump-form button {
+    background: none;
+    border: 1px solid var(--link-color);
+    color: var(--link-color);
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+/* Hamburger Menu Styles */
+.hamburger-menu {
+    display: none; /* 默认隐藏，在小屏幕上显示 */
+    flex-direction: column;
+    justify-content: space-around;
+    width: 30px;
+    height: 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin-left: auto; /* 推到右侧 */
+}
+
+.hamburger-line {
+    width: 100%;
+    height: 3px;
+    background-color: var(--font-color);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    transform-origin: center;
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+header nav {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap; /* 允许导航链接在必要时换行 */
+}
+.controls-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.controls-container > * {
+    margin: 0.3rem 0.5rem; /* 使用与categories页面相同的间隔方案 */
+}
+
+.controls-container > .filter-label {
+    margin-left: 0;
+}
+
+.controls-container > .separator {
+    margin-left: 1.2rem;
+    margin-right: 0.4rem; /* 在分隔符右侧也添加一点空间 */
+}
+
+.filter-bar {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+.active-filters {
+    margin-bottom: 1.5rem;
+}
+.filter-pill {
+    display: inline-block;
+    background-color: var(--card-color);
+    border: 1px solid var(--link-color);
+    color: var(--link-color);
+    padding: 0.3rem 0.7rem;
+    border-radius: 1rem;
+    margin-right: 0.5rem;
+    font-size: 0.9em;
+}
+.filter-pill.clear-all {
+    border-color: #e24a4a;
+    color: #e24a4a;
+}
+.category-page h3 {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+    margin-top: 2rem;
+}
+.category-list {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.category-list a {
+    /* 为每个链接添加外边距，确保它们之间有空隙 */
+    margin: 0.3rem 0.5rem;
+}
+
+/* For 10-star rating display */
+.rating-form form button {
+    font-size: 1.2em; /* slightly smaller to fit 10 */
+}
+
+/* =================================== */
+/*      响应式设计 (Responsive Design)      */
+/* =================================== */
+
+/* --- 详情页布局调整 --- */
+/* 当屏幕宽度小于或等于 800px 时，应用以下规则 */
+@media (max-width: 800px) {
+    .detail-container {
+        /* 将 flex 容器的主轴方向从水平变为垂直 */
+        flex-direction: column;
+    }
+}
+
+/* --- 筛选栏布局调整 --- */
+/* 当屏幕宽度较窄时，让筛选项在必要时换行 */
+.controls-container {
+    display: flex;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* 在小屏幕上，让每个筛选组占据一行 */
+@media (max-width: 768px) {
+    .controls-container {
+        flex-direction: row; /* 保持行布局以便筛选组可以分行 */
+        padding-left: 1rem; /* 添加左侧内边距使文字离左边缘有一定空格 */
+    }
+    
+    .controls-container > .filter-label {
+        margin-top: 0.3rem;
+        margin-bottom: 0.2rem;
+        flex-basis: 100%; /* 让标签占据整行 */
+    }
+    
+    /* 仅为筛选标签和分隔符添加顶部边框以实现分组间的分隔效果 */
+    .controls-container > .filter-label,
+    .controls-container > .separator {
+        border-top: 1px solid var(--border-color);
+        padding-top: 0.3rem;
+    }
+    
+    .controls-container > * {
+        margin: 0.2rem 0.3rem;
+    }
+    
+    .controls-container > .separator {
+        display: none; /* 在小屏幕上隐藏分隔符 */
+    }
+    
+    /* 移除第一个筛选标签的顶部边框以避免多余线条 */
+    .controls-container > .filter-label:first-of-type {
+        border-top: none;
+        padding-top: 0;
+    }
+}
+
+
+/* --- 头部布局调整 --- */
+/* 当屏幕宽度小于或等于 900px 时，应用以下规则 */
+@media (max-width: 900px) {
+    header {
+        /* 让标题、导航和搜索框垂直堆叠 */
+        flex-direction: column;
+        gap: 1rem; /* 在堆叠的元素之间增加一些间距 */
+    }
+
+    header nav {
+        /* 在小屏幕上让导航链接水平居中 */
+        justify-content: center;
+        flex-wrap: wrap; /* 允许导航链接在必要时换行 */
+    }
+}
+
+/* --- 汉堡菜单响应式设计 --- */
+/* 当屏幕宽度小于或等于 500px 时，显示汉堡菜单 */
+@media (max-width: 500px) {
+    .hamburger-menu {
+        display: flex; /* 显示汉堡菜单 */
+    }
+
+    header nav {
+        position: fixed;
+        top: 0;
+        left: -100%; /* 默认隐藏在左侧 */
+        width: 250px; /* 菜单宽度 */
+        height: 100vh; /* 全屏高度 */
+        background-color: var(--card-color);
+        border-right: 1px solid var(--border-color);
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        padding: 4rem 1rem 1rem; /* 顶部留出空间给标题 */
+        gap: 1rem;
+        transition: left 0.3s ease;
+        z-index: 1000;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+    }
+
+    header nav.open {
+        left: 0; /* 显示菜单 */
+    }
+
+    header nav a {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border-radius: 4px;
+        text-align: left;
+        transition: background-color 0.2s ease;
+        font-size: 1.1em;
+    }
+
+    header nav a:hover {
+        background-color: var(--link-color);
+        color: white;
+    }
+
+    /* 添加覆盖层 */
+    .menu-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .menu-overlay.active {
+        display: block;
+    }
+}
+
+.classification-section {
+    margin: 1.5rem 0;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.classification-form, .category-form {
+    margin-bottom: 1.5rem;
+}
+
+.classification-form strong, .category-form strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--link-color);
+    font-weight: 600;
+}
+
+.classification-form select, .category-form select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 2px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.classification-form select:focus, .category-form select:focus {
+    outline: none;
+    border-color: var(--link-color);
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.classification-form select:hover, .category-form select:hover {
+    border-color: var(--link-color);
+}
+
+/* 非JS设备的提交按钮样式 */
+.no-js-submit-btn {
+    margin-top: 0.8rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--link-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+}
+
+.no-js-submit-btn:hover {
+    background-color: var(--link-hover);
+}
+
+/* 当JavaScript可用时隐藏非JS提交按钮 */
+.js-enabled .no-js-submit-btn {
+    display: none;
+}
+
+.management-forms-container {
+    display: flex;
+    flex-wrap: wrap; /* 在窄屏幕上允许换行 */
+    gap: 2rem; /* 在两个表单之间增加间距 */
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* 让每个表单容器占据可用空间 */
+.classification-form,
+.category-form {
+    flex: 1;
+    min-width: 250px; /* 防止在窄屏幕上被过度挤压 */
+}
+
+/* 共享表单样式 */
+.classification-form form,
+.category-form form {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column; /* 让单选按钮垂直堆叠 */
+    align-items: flex-start; /* 左对齐 */
+    gap: 0.5rem; /* 单选按钮之间的间距 */
+}
+
+.classification-form label,
+.category-form label {
+    cursor: pointer;
+}
+
+.classification-form button,
+.category-form button {
+    background: none;
+    border: 1px solid var(--link-color);
+    color: var(--link-color);
+    padding: 0.3rem 0.8rem;
+    cursor: pointer;
+    border-radius: 3px;
+    margin-top: 0.5rem; /* 与单选按钮保持一点距离 */
+    align-self: flex-start; /* 让按钮也左对齐 */
+}
+
+/* --- 404 Error Page Styles --- */
+.error-page-container {
+    text-align: center;
+    padding: 4rem 2rem;
+    max-width: 700px;
+    margin: 3rem auto; /* Center vertically */
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.error-page-container h2 {
+    font-size: 2.5em;
+    color: #e24a4a; /* Bright red for error title */
+    margin-bottom: 1rem;
+}
+
+.error-page-container p {
+    font-size: 1.2em;
+    line-height: 1.6;
+    color: #ccc;
+}
+
+.error-actions {
+    margin-top: 2.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap; /* Wrap on narrow screens */
+}
+
+.error-button {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    border: 1px solid var(--link-color);
+    color: var(--link-color);
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: all 0.2s ease-in-out;
+}
+
+.error-button:hover {
+    background-color: var(--link-color);
+    color: #fff;
+    text-decoration: none;
+}
+
+.error-button.external {
+    border-color: #9ec260; /* Different color for external links */
+    color: #9ec260;
+}
+
+.error-button.external:hover {
+    background-color: #9ec260;
+    color: #fff;
+}
+
+/*
+  为包裹图片的链接设置样式，并默认禁用其交互。
+  这是为无JS设备准备的。
+*/
+.card-image-link {
+    display: block; /* 确保链接像一个块级容器 */
+    text-decoration: none;
+    pointer-events: none; /* 核心CSS: 使该元素不可被鼠标/触摸点击 */
+}
+
+/* --- Add Artwork Page Styles (已更新) --- */
+.add-artwork-container {
+    max-width: 900px;
+    margin: 0.5rem auto; /* 减小顶部边距 */
+    padding: 1rem; /* 减小内边距 */
+    background-color: var(--card-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.add-artwork-container h2 {
+    text-align: center;
+    color: var(--link-color);
+    margin: 0 0 1rem 0; /* 减小底部边距 */
+    font-size: 2.5rem; /* 增大字号 */
+}
+.metadata-fetcher .form-group {
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+}
+
+/* Auto Check for Duplicates checkbox */
+.metadata-fetcher .form-group.auto-check-duplicate {
+    border-bottom: none;
+    padding-bottom: 0.25rem;
+    white-space: nowrap;
+}
+
+.metadata-fetcher .form-group.auto-check-duplicate input[type="checkbox"] {
+    margin-right: 0.5rem;
+}
+
+.metadata-fetcher .form-group.auto-check-duplicate label {
+    display: inline;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.input-with-button {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.input-with-button input[type="url"] {
+    flex-grow: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    border-radius: 4px;
+}
+
+.input-with-button button {
+    padding: 0.5rem 1rem;
+    background-color: var(--link-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.input-with-button button:hover {
+    background-color: var(--link-hover);
+}
+
+#fetch-status {
+    margin-top: 0.5rem;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+/* Loading Spinner for fetch-status */
+.loading-spinner {
+    display: inline-block;
+    width: 1.2em;
+    height: 1.2em;
+    border: 3px solid #81b9ff;
+    border-top: 3px solid #2a2a2a;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.5em;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.drop-zones-container {
+    display: flex;
+    gap: 1rem; /* 两个拖放区之间的间距 */
+    margin-bottom: 1rem;
+}
+
+.drop-zone {
+    flex: 1; /* 让两个拖放区平分空间 */
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px; /* 增加最小高度，以便图片有更多空间 */
+    position: relative; /* 为图片定位做准备 */
+}
+
+.drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--link-color);
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+.drop-zone p {
+    margin: 0;
+    color: #aaa;
+}
+
+#file-drop-zone input[type="file"] {
+    display: none; /* 隐藏实际的文件输入 */
+}
+
+#image-preview {
+    max-width: 100%;
+    max-height: 100%; /* 允许图片撑满高度 */
+    width: auto; /* 保持图片原始比例 */
+    height: auto; /* 保持图片原始比例 */
+    object-fit: contain; /* 确保图片在容器内完整显示，不被裁剪 */
+    margin-top: 0; /* 移除顶部外边距，让图片更居中 */
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+#image-preview.hidden {
+    display: none;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 两列布局 */
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.form-group {
+    margin-bottom: 0.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+    color: var(--font-color);
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="url"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    color: var(--font-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.form-actions {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.75rem;
+    text-align: center;
+}
+
+.action-buttons button {
+    padding: 0.6rem 1.2rem;
+    margin: 0 0.3rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+}
+
+#submit-button {
+    background-color: var(--link-color);
+    color: white;
+}
+
+#submit-button:hover {
+    background-color: var(--link-hover);
+}
+
+.secondary-button {
+    background-color: #555;
+    color: white;
+}
+
+.secondary-button:hover {
+    background-color: #777;
+}
+
+#form-status {
+    margin-top: 0.75rem;
+    font-weight: 500;
+}
+
+#form-status.success {
+    color: #28a745;
+}
+
+#form-status.error {
+    color: #dc3545;
+}
+
+/* Autocomplete Styles */
+.autocomplete-container {
+    position: relative;
+}
+
+.autocomplete-results {
+    position: absolute;
+    background-color: var(--card-color);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+    width: 100%;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    border-radius: 0 0 4px 4px;
+    display: none; /* 默认隐藏 */
+}
+
+.autocomplete-results div {
+    padding: 0.8rem;
+    cursor: pointer;
+    text-align: left;
+}
+
+.autocomplete-results div:hover {
+    background-color: var(--link-color);
+    color: white;
+}
+
+/* Responsive adjustments for add artwork page */
+@media (max-width: 768px) {
+    .drop-zones-container {
+        flex-direction: column; /* 在小屏幕上垂直堆叠 */
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr; /* 在小屏幕上变为单列 */
+    }
+    
+    /* 在更小的屏幕上，让头部导航链接垂直排列 */
+    @media (max-width: 480px) {
+        header nav {
+            flex-direction: column;
+            align-items: center;
+        }
+    }
+}
