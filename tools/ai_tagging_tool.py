@@ -234,7 +234,7 @@ def analyze_batch_with_gemini(model, batch, enable_streaming=False):
 
     # 添加文本描述多个图片
     image_descriptions = []
-    for i, (_, file_path, file_name) in enumerate(valid_batch, 1):
+    for i, (_, file_path, file_name, _) in enumerate(valid_batch, 1):
         image_descriptions.append(f"image{i}:")
 
     message_parts.append({"text": "\n".join(image_descriptions) + "\n"})
@@ -377,7 +377,8 @@ def parse_batch_response(response_text, batch):
             if tags_json:
                 try:
                     tags_obj = json.loads(tags_json)
-                    tags_obj['version'] = 1
+                    tags_obj['version'] = 2
+                    tags_obj['model'] = MODEL_NAME
                     tags_json = json.dumps(tags_obj, ensure_ascii=False, indent=2)
                 except (json.JSONDecodeError, TypeError):
                     pass
@@ -404,22 +405,31 @@ def parse_batch_response(response_text, batch):
         print(f"  ⚠️  模型响应编号不正确 - 期望: {sorted(expected_image_nums)}, 实际: {sorted(actual_image_nums)}")
         print("  ⚠️  抛弃整个批次的结果")
         # 返回所有为空的结果
-        return [(artwork_id, file_path, file_name, None, None, None, None) for artwork_id, file_path, file_name in batch]
+        return [(artwork_id, file_path, file_name, original_category, None, None, None, None) for artwork_id, file_path, file_name, original_category in batch]
 
     # 按批次顺序整理结果
     batch_results = []
-    for i, (artwork_id, file_path, file_name) in enumerate(batch, 1):
+    for i, (artwork_id, file_path, file_name, original_category) in enumerate(batch, 1):
         image_num = str(i)
         if image_num in results:
             r = results[image_num]
+            
+            # 映射category：fanart -> fanart_non_comic（但如果原本是fanart_comic则保持）
+            ai_category = r['category']
+            if ai_category == 'fanart':
+                if original_category == 'fanart_comic':
+                    ai_category = 'fanart_comic'
+                else:
+                    ai_category = 'fanart_non_comic'
+            
             batch_results.append((
-                artwork_id, file_path, file_name,
+                artwork_id, file_path, file_name, original_category,
                 r['caption'], r['tags'],
-                r['category'], r['classification']
+                ai_category, r['classification']
             ))
         else:
             # 理论上不会到达这里，因为上面的验证已经确保了编号完整性
-            batch_results.append((artwork_id, file_path, file_name, None, None, None, None))
+            batch_results.append((artwork_id, file_path, file_name, original_category, None, None, None, None))
 
     return batch_results
 
@@ -478,7 +488,7 @@ def process_batch_with_retry(model, current_batch, enable_streaming=False, batch
         return -1  # 没有更多批次了，返回失败
 
     print(f"⚠️  更换到下一批次进行重试...")
-    print(f"重试批次图片ID: {', '.join([str(id) for id, _, _ in next_batch])}")
+    print(f"重试批次图片ID: {', '.join([str(id) for id, _, _, _ in next_batch])}")
 
     try:
         return process_single_batch(model, next_batch, enable_streaming, f"{batch_num}-重试")
@@ -491,7 +501,7 @@ def process_batch_with_retry(model, current_batch, enable_streaming=False, batch
         return -1
 
     print(f"⚠️  最后一次重试...")
-    print(f"最后批次图片ID: {', '.join([str(id) for id, _, _ in final_batch])}")
+    print(f"最后批次图片ID: {', '.join([str(id) for id, _, _, _ in final_batch])}")
 
     try:
         return process_single_batch(model, final_batch, enable_streaming, f"{batch_num}-最后重试")
@@ -501,7 +511,7 @@ def process_batch_with_retry(model, current_batch, enable_streaming=False, batch
 
 def analyze_single_image(model, single_image_batch, enable_streaming=False):
     """分析单张图片，返回结果"""
-    artwork_id, file_path, file_name = single_image_batch[0]
+    artwork_id, file_path, file_name, original_category = single_image_batch[0]
 
     # 构建单张图片的消息内容
     message_parts = []
@@ -627,40 +637,44 @@ def analyze_single_image(model, single_image_batch, enable_streaming=False):
                 # 如果tags_json存在，为其添加version字段
                 if tags_json:
                     try:
-                        # 尝试解析JSON并添加version
+                        # 尝试解析JSON并添加version和model
                         tags_obj = json.loads(tags_json)
-                        tags_obj['version'] = 1
+                        tags_obj['version'] = 2
+                        tags_obj['model'] = MODEL_NAME
                         tags_json = json.dumps(tags_obj, ensure_ascii=False, indent=2)
                     except (json.JSONDecodeError, TypeError):
                         pass
 
-                # 映射category：fanart -> fanart_non_comic
+                # 映射category：fanart -> fanart_non_comic（但如果原本是fanart_comic则保持）
                 if category == 'fanart':
-                    category = 'fanart_non_comic'
+                    if original_category == 'fanart_comic':
+                        category = 'fanart_comic'
+                    else:
+                        category = 'fanart_non_comic'
 
                 results["1"] = (caption, tags_json, category, classification)
 
             except Exception as e:
                 print(f"  警告: 解析单张图片时出错: {e}")
-                return [(artwork_id, file_path, file_name, None, None, None, None)]
+                return [(artwork_id, file_path, file_name, original_category, None, None, None, None)]
 
         # 检查是否有结果
         if "1" in results:
             caption, tags_json, category, classification = results["1"]
-            return [(artwork_id, file_path, file_name, caption, tags_json, category, classification)]
+            return [(artwork_id, file_path, file_name, original_category, caption, tags_json, category, classification)]
         else:
-            return [(artwork_id, file_path, file_name, None, None, None, None)]
+            return [(artwork_id, file_path, file_name, original_category, None, None, None, None)]
 
     except Exception as e:
         # 检查是否为blocking错误，如果是则返回blocked标记
         if is_blocking_error(e):
             print(f"  ⚠️  单张图片 {artwork_id} 被API拦截，标记为blocked")
             # 创建blocked标记的JSON
-            blocked_tags = '{"version": 1}'
-            return [(artwork_id, file_path, file_name, "blocked", blocked_tags, None, None)]
+            blocked_tags = json.dumps({"version": 2, "model": MODEL_NAME}, ensure_ascii=False)
+            return [(artwork_id, file_path, file_name, original_category, "blocked", blocked_tags, None, None)]
         else:
             # 其他错误，返回普通失败
-            return [(artwork_id, file_path, file_name, None, None, None, None)]
+            return [(artwork_id, file_path, file_name, original_category, None, None, None, None)]
 
 def process_single_batch(model, batch, enable_streaming=False, batch_label=""):
     """处理单个批次（不带重试逻辑），包括blocking错误处理"""
@@ -671,7 +685,7 @@ def process_single_batch(model, batch, enable_streaming=False, batch_label=""):
         batch_label = "处理中"
 
     # 显示批次信息
-    image_ids = [str(artwork_id) for artwork_id, _, _ in batch]
+    image_ids = [str(artwork_id) for artwork_id, _, _, _ in batch]
 
     try:
         # 批量分析所有图片
@@ -686,7 +700,7 @@ def process_single_batch(model, batch, enable_streaming=False, batch_label=""):
 
         # 处理每张图片的结果并更新数据库
         successful = 0
-        for i, (artwork_id, file_path, file_name, caption, tags_json, category, classification) in enumerate(batch_results, 1):
+        for i, (artwork_id, file_path, file_name, original_category, caption, tags_json, category, classification) in enumerate(batch_results, 1):
             progress = f"{i}/{total_in_batch}"
 
             if caption and tags_json:
@@ -724,21 +738,21 @@ def process_single_batch(model, batch, enable_streaming=False, batch_label=""):
             blocked_count = 0
             failed_count = 0
 
-            for i, (artwork_id, file_path, file_name) in enumerate(batch, 1):
+            for i, (artwork_id, file_path, file_name, original_category) in enumerate(batch, 1):
                 progress = f"{i}/{total_in_batch}"
-                single_batch = [(artwork_id, file_path, file_name)]
+                single_batch = [(artwork_id, file_path, file_name, original_category)]
 
                 # 逐张分析
                 print(f"  {progress} 处理图片 {artwork_id}...", end=" ", flush=True)
 
                 try:
                     single_results = analyze_single_image(model, single_batch, enable_streaming)  # 逐张模式也支持流式输出
-                    caption = single_results[0][3]
-                    tags_json = single_results[0][4]
-                    category = single_results[0][5]
-                    classification = single_results[0][6]
+                    caption = single_results[0][4]
+                    tags_json = single_results[0][5]
+                    category = single_results[0][6]
+                    classification = single_results[0][7]
 
-                    if caption == "blocked" and tags_json == '{"version": 1}':
+                    if caption == "blocked":
                         # 图片被block
                         if update_artwork_ai_tags(artwork_id, caption, tags_json):
                             print("⚠️ 被API拦截，已标记为blocked")
@@ -790,7 +804,7 @@ def process_batch(model, batch, enable_streaming=False, batch_num=1):
     print(f"\n=== 批次 {batch_num} 开始批量处理 ({total_in_batch} 张图片) ===")
 
     # 显示这次批次处理的图片ID
-    image_ids = [str(artwork_id) for artwork_id, _, _ in batch]
+    image_ids = [str(artwork_id) for artwork_id, _, _, _ in batch]
     print(f"批次图片ID: {', '.join(image_ids)}")
 
     # 批量分析所有图片
@@ -804,7 +818,7 @@ def process_batch(model, batch, enable_streaming=False, batch_num=1):
         print()  # 流式输出结束后换行
 
     # 处理每张图片的结果
-    for i, (artwork_id, file_path, file_name, caption, tags_json, category, classification) in enumerate(batch_results, 1):
+    for i, (artwork_id, file_path, file_name, original_category, caption, tags_json, category, classification) in enumerate(batch_results, 1):
         progress = f"{i}/{total_in_batch}"
 
         if caption and tags_json:
@@ -909,7 +923,7 @@ def main():
                 sys.exit(1)
 
         # 显示批次信息
-        image_ids = [str(artwork_id) for artwork_id, _, _ in batch]
+        image_ids = [str(artwork_id) for artwork_id, _, _, _ in batch]
         print(f"\n=== 批次 {batch_num} 开始处理 ({len(batch)} 张图片) ===")
         print(f"批次图片ID: {', '.join(image_ids)}")
 
