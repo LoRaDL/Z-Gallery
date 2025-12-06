@@ -16,6 +16,7 @@ import imagehash
 import config
 import utils
 import logger
+import artwork_importer
 
 # --- App Configuration ---
 app = Flask(__name__)
@@ -544,19 +545,15 @@ def add_artwork_page():
 # --- API Endpoint to Handle Artwork Upload ---
 @app.route('/api/add_artwork', methods=['POST'])
 def api_add_artwork():
-    db = get_db()
     source_path = None
-    original_filename = None
-
-    # --- 1. 统一处理文件来源 ---
+    
+    # --- 1. 获取文件 ---
     temp_filename = request.form.get('temp_filename')
     if temp_filename:
         # 方式A: 文件来自 URL Fetch
         source_path = os.path.join('temp_uploads', temp_filename)
         if not os.path.exists(source_path):
             return jsonify({'success': False, 'error': f"Temporary file '{temp_filename}' not found."}), 400
-        # 使用原始下载的文件名
-        original_filename = temp_filename
     
     elif 'artwork_file' in request.files:
         # 方式B: 文件来自用户手动上传
@@ -565,117 +562,51 @@ def api_add_artwork():
             return jsonify({'success': False, 'error': 'No file selected.'}), 400
         
         original_filename = secure_filename(file.filename)
-        # 统一保存到临时目录，以便后续处理流程一致
         source_path = os.path.join('temp_uploads', original_filename)
         file.save(source_path)
     else:
         return jsonify({'success': False, 'error': 'No file part provided.'}), 400
 
-    # --- 2. 获取元数据 (核心修正) ---
-    artist = request.form.get('artist')
-    platform = request.form.get('platform')
-    title = request.form.get('title')
-    tags = request.form.get('tags')
-    description = request.form.get('description')
-    rating = request.form.get('rating', type=int) if request.form.get('rating') else None
-    category = request.form.get('category')
-    classification = request.form.get('classification')
-    # 新增: 从表单中获取手动输入或修改过的日期
-    publication_date_str = request.form.get('publication_date')
-
-    if not artist or not platform:
-        # 清理临时文件
-        if os.path.exists(source_path): os.remove(source_path)
+    # --- 2. 准备元数据 ---
+    metadata = {
+        'artist': request.form.get('artist'),
+        'platform': request.form.get('platform'),
+        'title': request.form.get('title'),
+        'tags': request.form.get('tags'),
+        'description': request.form.get('description'),
+        'rating': request.form.get('rating', type=int) if request.form.get('rating') else None,
+        'category': request.form.get('category'),
+        'classification': request.form.get('classification'),
+        'publication_date': request.form.get('publication_date'),
+        'source_url': request.form.get('source_url')
+    }
+    
+    # 验证必填字段
+    if not metadata['artist'] or not metadata['platform']:
+        if os.path.exists(source_path):
+            os.remove(source_path)
         return jsonify({'success': False, 'error': 'Artist and Platform are required.'}), 400
 
-    # --- 2. Check for Duplicates (New Logic) ---
-    # 只有当用户提供了作品名时，才进行这个三要素重复检查
-    if title and is_duplicate(platform, artist, title):
-        # 核心修正: 更新了错误信息，使其更具体
-        return jsonify({
-            'success': False, 
-            'error': f'Artwork with title "{title}" by "{artist}" on platform "{platform}" already exists.'
-        }), 409
-
-    # --- 3. 将文件从临时位置移动到最终位置 ---
-    try:
-        target_dir = os.path.join(config.IMAGES_ROOT_FOLDER, platform, artist)
-        os.makedirs(target_dir, exist_ok=True)
-        final_filepath = os.path.join(target_dir, original_filename).replace('\\', '/')
-        shutil.move(source_path, final_filepath)
-    except Exception as e:
-        if os.path.exists(source_path): os.remove(source_path)
-        return jsonify({'success': False, 'error': f"Could not move file: {e}"}), 500
-
-    # --- 4. 准备并插入数据库 (核心修正) ---
-    try:
-        last_modified_date = datetime.datetime.now()
-        creation_date = datetime.datetime.fromtimestamp(os.path.getctime(final_filepath))
+    # --- 3. 调用统一入库接口 ---
+    success, artwork_id, error = artwork_importer.add_artwork_to_database(
+        file_path=source_path,
+        metadata=metadata,
+        move_file=True,
+        db_connection=get_db(),
+        check_duplicate=True
+    )
+    
+    if success:
+        get_db().commit()
+        return jsonify({'success': True, 'message': 'Artwork added successfully!', 'artwork_id': artwork_id})
+    else:
+        # 入库失败，清理文件
+        if os.path.exists(source_path):
+            os.remove(source_path)
         
-        # --- 日期处理逻辑 ---
-        publication_date_obj = None
-        # 优先级1: 尝试解析用户手动输入的日期
-        if publication_date_str:
-            try:
-                # 尝试匹配 "YYYY-MM-DD HH:MM:SS" 或 "YYYY-MM-DD"
-                if len(publication_date_str) > 10:
-                    publication_date_obj = datetime.datetime.strptime(publication_date_str, '%Y-%m-%d %H:%M:%S')
-                else:
-                    publication_date_obj = datetime.datetime.strptime(publication_date_str, '%Y-%m-%d')
-            except ValueError:
-                publication_date_obj = None # 如果格式错误，则忽略
-        
-        # 优先级2: 如果用户输入无效或为空，则回退到工具函数
-        if not publication_date_obj:
-            try:
-                publication_date_obj, _ = utils.get_publication_date(final_filepath)
-            except Exception:
-                publication_date_obj = None
-
-        # 计算感知哈希
-        phash_value = None
-        try:
-            with Image.open(final_filepath) as _img_for_hash:
-                phash_value = str(imagehash.phash(_img_for_hash))
-        except Exception as e:
-            phash_value = None
-
-        cursor = db.cursor()
-        # 确保 INSERT 语句包含了 publication_date
-        cursor.execute("""
-            INSERT INTO artworks (file_path, file_name, title, artist, source_platform, tags, description, rating, category, classification, creation_date, publication_date, last_modified_date, phash)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            final_filepath, original_filename, title, artist, platform, tags, description,
-            rating, category or 'fanart_non_comic', classification or None,
-            creation_date, publication_date_obj, last_modified_date, phash_value
-        ))
-        
-        new_id = cursor.lastrowid
-        
-        # --- 6. Create Thumbnail ---
-        thumbnail_filename = f"{new_id:06d}.jpg"
-        # 使用 utils 中的常量和目录
-        thumb_path = os.path.join(utils.THUMBNAIL_DIR, thumbnail_filename)
-        with Image.open(final_filepath) as img:
-            img.thumbnail(utils.THUMBNAIL_SIZE)
-            if img.mode != 'RGB': img = img.convert('RGB')
-            img.save(thumb_path, "JPEG", quality=85)
-            
-        # Update record with thumbnail filename
-        cursor.execute(
-            "UPDATE artworks SET thumbnail_filename = ? WHERE id = ?",
-            (thumbnail_filename, new_id)
-        )
-        
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        # 如果数据库操作失败，尝试删除已移动的文件以保持一致性
-        if os.path.exists(final_filepath): os.remove(final_filepath)
-        return jsonify({'success': False, 'error': f'Database error: {e}'}), 500
-
-    return jsonify({'success': True, 'message': 'Artwork added successfully!', 'artwork_id': new_id})
+        # 根据错误类型返回不同的状态码
+        status_code = 409 if "Duplicate" in error else 500
+        return jsonify({'success': False, 'error': error}), status_code
 
 @app.errorhandler(404)
 def page_not_found(error):

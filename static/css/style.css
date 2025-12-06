@@ -52,7 +52,7 @@ header h1 a {
     border: 1px solid var(--border-color);
     background-color: var(--bg-color);
     color: var(--font-color);
-    border-radius: 0.5rem; /* 更小的圆角 */
+    border-radius: 0.5rem;
 }
 .search-form button {
     padding: 0.5rem 1rem;
@@ -60,8 +60,8 @@ header h1 a {
     background-color: var(--link-color);
     color: #fff;
     cursor: pointer;
-    border-radius: 0.5rem; /* 更小的圆角 */
-    height: calc(1rem + 2px + 2*0.5rem - 2px); /* 减小2个像素高度 */
+    border-radius: 0.5rem;
+    height: calc(1rem + 2px + 2*0.5rem - 2px); /* 减小2个像素高度达到视觉平衡 */
     box-sizing: border-box;
 }
 
@@ -170,10 +170,10 @@ main {
 .card {
     background-color: var(--card-color);
     /* 移除边框 */
-    /* Apple 风格的超椭圆圆角 - G2 连续曲率，真正的超椭圆公式 */
+    /* G2 连续曲率圆角，超椭圆公式 */
     /* 降级方案：如果 clip-path/mask 不支持，使用普通圆角 */
-    border-radius: 20px;
-    /* clip-path 或 mask-image 会通过 JavaScript 动态设置 */
+    border-radius: 38px;
+    /* clip-path 通过 JavaScript 动态设置 */
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -182,7 +182,7 @@ main {
     box-sizing: border-box;
 }
 
-/* 如果 clip-path 或 mask 已应用，移除降级的 border-radius */
+/* 如果 clip-path 已应用，移除降级的 border-radius */
 .card[data-squircle="applied"] {
     border-radius: 0;
 }

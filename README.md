@@ -70,9 +70,19 @@ python app.py
 - `check_and_fix_thumbnails.py` - 检查和修复缩略图
 - `clean_db.py` - 清理数据库中的无效记录
 - `del_one_star.py` - 删除低评分图片
+- `batch_twitter/` - Twitter批量下载和导入工具
 
-运行示例：
+### Twitter批量导入
+
 ```bash
-python tools/ai_tagging_tool.py
+# 1. 下载
+python tools/batch_twitter/download.py https://twitter.com/artist_name
+
+# 2. 人工清洗（删除不需要的图片）
+
+# 3. 导入
+python tools/batch_twitter/import.py artist_name_20241206_143022
 ```
+
+详见 `tools/batch_twitter/README.md`
 

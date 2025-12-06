@@ -5,6 +5,13 @@ import os
 import subprocess
 import config
 import argparse
+import twitter_metadata_parser
+
+
+def is_twitter_url(url):
+    """检查是否是Twitter/X的URL"""
+    return bool(re.search(r'(twitter\.com|x\.com)', url, re.IGNORECASE))
+
 
 def fix_surrogates(obj):
     """递归修复字符串中破碎的代理对"""
@@ -28,6 +35,10 @@ def fetch_and_parse(url, proxy=None, debug=False):
     核心函数：精确下载图片，智能合并元数据，并正确提取所有关键字。
     """
     try:
+        # 检查URL是否支持
+        if not is_twitter_url(url):
+            raise ValueError("Unsupported URL. Only Twitter/X links are supported.")
+        
         # --- 1. 精确下载 ---
         target_photo_num = 1
         filter_option = []
@@ -115,58 +126,16 @@ def fetch_and_parse(url, proxy=None, debug=False):
         if not final_meta:
             raise ValueError("No suitable metadata found.")
 
-        # --- 4. 提取关键字 (最终修正版) ---
+        # --- 4. 使用统一的解析器 ---
         metadata = fix_surrogates(final_meta)
         
-        extracted_data = {
-            'artist': None, 'platform': None, 'title': None,
-            'tags': '', 'description': '', 'classification': 'sfw',
-            'publication_date': None # <-- 新增：为日期准备一个位置
-        }
-
-        # 作者, 平台, 标签 (逻辑无变化)
-        author_info = metadata.get('author', {}) or metadata.get('user', {})
-        if isinstance(author_info, dict): extracted_data['artist'] = author_info.get('name')
-        if not extracted_data.get('artist'): extracted_data['artist'] = metadata.get('username')
-        
-        platform_str = metadata.get('category') or metadata.get('extractor', '')
-        extracted_data['platform'] = platform_str.split(':')[0]
-
-        tags_list = metadata.get('hashtags', []) or metadata.get('tags', [])
-        if isinstance(tags_list, list): extracted_data['tags'] = ", ".join(tags_list)
-
-        # 描述 (现在只提取纯粹的描述)
-        description = metadata.get('content') or metadata.get('description') or ''
-        extracted_data['description'] = description.strip()
-
-        # 标题 (基于原始描述提取)
-        title = metadata.get('title')
-        if not title and description:
-            clean_desc = re.sub(r'#\w+\s*', '', description).strip()
-            extracted_data['title'] = clean_desc.split('\n')[0]
-        else:
-            extracted_data['title'] = title
-        
-        # 自动添加标号逻辑
-        if extracted_data['title']:
-            # 如果帖子有多张图片，自动添加标号
-            if is_multi_image_post:
-                # 检查标题是否已经有标号（支持括号格式）
-                if not re.search(r'\s*\(\d+\)\s*$', extracted_data['title']):
-                    extracted_data['title'] = f"{extracted_data['title']} ({current_image_position})"
-            # 如果帖子只有一张图片，但检测到是多图帖子的一部分，添加标号1
-            elif total_images_in_post > 1 and current_image_position == 1:
-                if not re.search(r'\s*\(\d+\)\s*$', extracted_data['title']):
-                    extracted_data['title'] = f"{extracted_data['title']} (1)"
-            
-        # --- 5. 应用自定义逻辑 (核心修正) ---
-        # 读取日期字符串并放入独立字段
-        date_str = metadata.get('date')
-        if date_str:
-            extracted_data['publication_date'] = date_str
-        
-        if metadata.get('sensitive') is True:
-            extracted_data['classification'] = 'nsfw'
+        # 调用共享的Twitter元数据解析器
+        extracted_data = twitter_metadata_parser.parse_twitter_metadata(
+            data=metadata,
+            image_position=current_image_position,
+            total_images=total_images_in_post,
+            is_multi_image_post=is_multi_image_post
+        )
 
         # --- 6. 最终输出 ---
         final_output = { 

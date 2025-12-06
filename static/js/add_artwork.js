@@ -73,8 +73,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = artworkUrlInput.value.trim();
             if (!url) {
                 fetchStatus.textContent = 'Please enter a valid URL.';
+                fetchStatus.classList.add('error');
                 return;
             }
+
+            // 检查是否是Twitter/X链接
+            if (!/(twitter\.com|x\.com)/i.test(url)) {
+                fetchStatus.textContent = 'Only Twitter/X links are supported.';
+                fetchStatus.classList.add('error');
+                return;
+            }
+
+            // 清除之前的错误样式
+            fetchStatus.classList.remove('error');
 
             fetchStatus.innerHTML = '<span class="loading-spinner"></span> Fetching metadata...';
             fetchButton.disabled = true;
@@ -157,10 +168,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }, 200);
                 } else {
-                    fetchStatus.textContent = result.error || 'Failed to fetch metadata.';
+                    // 显示错误信息
+                    const errorMsg = result.error || 'Failed to fetch metadata.';
+                    fetchStatus.textContent = errorMsg;
+                    fetchStatus.classList.add('error');
                 }
             } catch (error) {
                 fetchStatus.textContent = 'An error occurred while fetching metadata.';
+                fetchStatus.classList.add('error');
             } finally {
                 fetchButton.disabled = false;
             }

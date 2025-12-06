@@ -1,0 +1,540 @@
+#!/usr/bin/env python3
+"""
+Twitter批量导入工具
+用法: python import.py <directory_name> [--preview]
+"""
+
+import sys
+import os
+import json
+import re
+import sqlite3
+from PIL import Image
+import imagehash
+
+# 添加项目根目录到路径
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+import config
+import artwork_importer
+import twitter_metadata_parser
+
+
+def parse_gallery_dl_metadata(json_path):
+    """解析gallery-dl生成的JSON元数据"""
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    # 提取多图信息
+    image_position = data.get('num', 1)
+    total_images = data.get('count', 1)
+    post_id = data.get('tweet_id') or data.get('post_id')
+    
+    # 使用共享的解析器
+    extracted = twitter_metadata_parser.parse_twitter_metadata(
+        data,
+        image_position=image_position,
+        total_images=total_images
+    )
+    
+    # 添加调试信息
+    extracted['_post_id'] = post_id
+    extracted['_image_position'] = image_position
+    extracted['_total_images'] = total_images
+    
+    return extracted
+
+
+def preview_import(directory):
+    """预览将要导入的内容"""
+    script_dir = os.path.dirname(__file__)
+    downloads_dir = os.path.join(script_dir, 'downloads')
+    target_dir = os.path.join(downloads_dir, directory)
+    
+    if not os.path.exists(target_dir):
+        print(f"错误: 目录不存在: {directory}")
+        sys.exit(1)
+    
+    # 扫描图片文件
+    image_files = [f for f in os.listdir(target_dir) 
+                   if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))]
+    
+    if not image_files:
+        print(f"错误: 目录中没有找到图片文件")
+        sys.exit(1)
+    
+    print(f"\n预览导入: {directory}")
+    print("=" * 70)
+    
+    will_import = 0
+    will_skip = 0
+    
+    conn = sqlite3.connect(config.DB_FILE)
+    cursor = conn.cursor()
+    
+    for filename in sorted(image_files):
+        # gallery-dl的JSON文件名格式是 filename.jpg.json
+        json_path = os.path.join(target_dir, filename + '.json')
+        
+        if not os.path.exists(json_path):
+            print(f"⚠ {filename} - 跳过（无元数据）")
+            will_skip += 1
+            continue
+        
+        try:
+            metadata = parse_gallery_dl_metadata(json_path)
+            
+            if not metadata['artist']:
+                print(f"⚠ {filename} - 跳过（无作者信息）")
+                will_skip += 1
+                continue
+            
+            # 检查重复
+            if metadata.get('title'):
+                cursor.execute(
+                    "SELECT id FROM artworks WHERE source_platform = ? AND artist = ? AND title = ?",
+                    (metadata['platform'], metadata['artist'], metadata['title'])
+                )
+                if cursor.fetchone():
+                    print(f"⚠ {filename} - 跳过（已存在）")
+                    will_skip += 1
+                    continue
+            
+            # 显示多图信息
+            multi_info = ""
+            if metadata.get('_total_images', 1) > 1:
+                multi_info = f" [{metadata['_image_position']}/{metadata['_total_images']}]"
+            
+            print(f"✓ {filename}{multi_info}")
+            print(f"  → {metadata['artist']}: {metadata['title'][:60]}")
+            will_import += 1
+            
+        except Exception as e:
+            print(f"✗ {filename} - 错误: {e}")
+            will_skip += 1
+    
+    conn.close()
+    
+    print("=" * 70)
+    print(f"总计: {will_import} 张将导入, {will_skip} 张将跳过")
+    print("=" * 70)
+
+
+def load_all_phashes(conn):
+    """一次性加载所有phash到内存"""
+    cursor = conn.execute("SELECT id, phash, file_name, artist, title FROM artworks WHERE phash IS NOT NULL")
+    all_hashes = []
+    
+    for row in cursor.fetchall():
+        try:
+            all_hashes.append({
+                'id': row[0],
+                'hash': imagehash.hex_to_hash(row[1]),
+                'file_name': row[2],
+                'artist': row[3],
+                'title': row[4]
+            })
+        except Exception:
+            continue
+    
+    return all_hashes
+
+
+def find_similar_images(image_path, all_hashes, threshold=1):
+    """查找相似图片（使用预加载的hash列表）"""
+    try:
+        # 计算当前图片的phash
+        with Image.open(image_path) as img:
+            query_hash = imagehash.phash(img)
+        
+        similar = []
+        for item in all_hashes:
+            try:
+                distance = query_hash - item['hash']
+                if distance < threshold:
+                    similar.append({
+                        'id': item['id'],
+                        'distance': distance,
+                        'file_name': item['file_name'],
+                        'artist': item['artist'],
+                        'title': item['title']
+                    })
+            except Exception:
+                continue
+        
+        return sorted(similar, key=lambda x: x['distance'])
+    
+    except Exception as e:
+        print(f"  ⚠ 无法计算相似度: {e}")
+        return []
+
+
+def ask_user_decision(filename, similar_images):
+    """询问用户如何处理相似图片"""
+    print(f"\n  ⚠ 发现 {len(similar_images)} 张相似图片:")
+    for i, sim in enumerate(similar_images[:5], 1):  # 最多显示5张
+        print(f"     {i}. ID:{sim['id']:06d} 距离:{sim['distance']} - {sim['artist']}: {sim['title'][:40]}")
+    
+    if len(similar_images) > 5:
+        print(f"     ... 还有 {len(similar_images) - 5} 张")
+    
+    print(f"\n  当前图片: {filename}")
+    print(f"  选项:")
+    print(f"    s - 跳过当前图片")
+    print(f"    k - 保留并导入（可能重复）")
+    print(f"    v - 查看详细信息")
+    print(f"    q - 退出导入")
+    
+    while True:
+        try:
+            choice = input(f"  请选择 [s/k/v/q]: ").lower().strip()
+            if choice in ['s', 'k', 'v', 'q']:
+                return choice
+            print("  无效的选择，请重新输入")
+        except (EOFError, KeyboardInterrupt):
+            return 'q'
+
+
+def import_batch(directory, check_duplicates=True, threshold=1, interactive=False):
+    """批量导入指定目录中的图片"""
+    script_dir = os.path.dirname(__file__)
+    downloads_dir = os.path.join(script_dir, 'downloads')
+    target_dir = os.path.join(downloads_dir, directory)
+    
+    if not os.path.exists(target_dir):
+        print(f"错误: 目录不存在: {directory}")
+        sys.exit(1)
+    
+    # 扫描图片文件
+    try:
+        all_files = os.listdir(target_dir)
+    except Exception as e:
+        print(f"错误: 无法读取目录: {e}")
+        sys.exit(1)
+    
+    image_files = [f for f in all_files 
+                   if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))]
+    
+    if not image_files:
+        print(f"错误: 目录中没有找到图片文件")
+        print(f"目录内容: {len(all_files)} 个文件")
+        sys.exit(1)
+    
+    print(f"\n开始导入: {directory}")
+    print(f"找到 {len(image_files)} 张图片")
+    if check_duplicates:
+        print(f"相似度检查: 开启 (阈值: {threshold})")
+    print("=" * 70)
+    
+    success_count = 0
+    skip_count = 0
+    error_count = 0
+    
+    conn = sqlite3.connect(config.DB_FILE)
+    
+    # 预加载所有phash（优化性能）
+    all_hashes = []
+    if check_duplicates:
+        print("加载数据库中的图片哈希...")
+        all_hashes = load_all_phashes(conn)
+        print(f"已加载 {len(all_hashes)} 张图片的哈希值")
+        
+        # 预计算待导入图片的phash（可选优化）
+        if len(image_files) > 10:
+            print(f"预计算 {len(image_files)} 张待导入图片的哈希...")
+        
+        print("=" * 70)
+    
+    for idx, filename in enumerate(sorted(image_files), 1):
+        image_path = os.path.join(target_dir, filename)
+        # gallery-dl的JSON文件名格式是 filename.jpg.json，不是 filename.json
+        json_path = os.path.join(target_dir, filename + '.json')
+        
+        print(f"\n[{idx}/{len(image_files)}] 处理: {filename}")
+        
+        if not os.path.exists(json_path):
+            print(f"  ⚠ 跳过: 没有找到元数据文件 (需要 {os.path.basename(json_path)})")
+            skip_count += 1
+            continue
+        
+        try:
+            # 解析元数据
+            metadata = parse_gallery_dl_metadata(json_path)
+            
+            if not metadata['artist']:
+                print(f"  ⚠ 跳过: 无法提取作者信息")
+                skip_count += 1
+                continue
+            
+            # 显示多图信息
+            if metadata.get('_total_images', 1) > 1:
+                print(f"  📷 多图帖子: {metadata['_image_position']}/{metadata['_total_images']}")
+            
+            # 相似度检查
+            if check_duplicates:
+                similar_images = find_similar_images(image_path, all_hashes, threshold)
+                if similar_images:
+                    if interactive:
+                        # 交互模式：询问用户
+                        decision = ask_user_decision(filename, similar_images)
+                        
+                        if decision == 's':
+                            print(f"  ⊘ 跳过")
+                            skip_count += 1
+                            continue
+                        elif decision == 'q':
+                            print(f"\n用户中止导入")
+                            break
+                        elif decision == 'v':
+                            # 显示详细信息
+                            print(f"\n  详细信息:")
+                            for sim in similar_images[:5]:
+                                print(f"    ID:{sim['id']:06d} 距离:{sim['distance']}")
+                                print(f"    文件: {sim['file_name']}")
+                                print(f"    作者: {sim['artist']}")
+                                print(f"    标题: {sim['title']}")
+                                print()
+                            
+                            # 再次询问
+                            decision = ask_user_decision(filename, similar_images)
+                            if decision == 's':
+                                print(f"  ⊘ 跳过")
+                                skip_count += 1
+                                continue
+                            elif decision == 'q':
+                                print(f"\n用户中止导入")
+                                break
+                        # decision == 'k': 继续导入
+                    else:
+                        # 非交互模式：自动跳过
+                        print(f"  ⊘ 跳过 (发现 {len(similar_images)} 张相似图片，距离: {similar_images[0]['distance']})")
+                        skip_count += 1
+                        continue
+            
+            # 调用统一入库接口
+            success, artwork_id, error = artwork_importer.add_artwork_to_database(
+                file_path=image_path,
+                metadata=metadata,
+                move_file=True,
+                db_connection=conn,
+                check_duplicate=True
+            )
+            
+            if success:
+                print(f"  ✓ 成功导入 (ID: {artwork_id:06d})")
+                # 安全地显示标题
+                title_display = metadata.get('title') or '(无标题)'
+                print(f"     {metadata['artist']}: {title_display[:60]}")
+                conn.commit()
+                success_count += 1
+            else:
+                if "Duplicate" in error:
+                    print(f"  ⚠ 跳过: {error}")
+                    skip_count += 1
+                else:
+                    print(f"  ✗ 失败: {error}")
+                    error_count += 1
+                
+        except Exception as e:
+            print(f"  ✗ 错误: {e}")
+            error_count += 1
+    
+    conn.close()
+    
+    print("\n" + "=" * 70)
+    print(f"导入完成！")
+    print(f"  ✓ 成功: {success_count}")
+    print(f"  ⚠ 跳过: {skip_count}")
+    print(f"  ✗ 错误: {error_count}")
+    print("=" * 70 + "\n")
+
+
+def list_available_batches():
+    """列出所有可用的批次"""
+    script_dir = os.path.dirname(__file__)
+    downloads_dir = os.path.join(script_dir, 'downloads')
+    
+    if not os.path.exists(downloads_dir):
+        return []
+    
+    batches = []
+    for dirname in os.listdir(downloads_dir):
+        dir_path = os.path.join(downloads_dir, dirname)
+        if os.path.isdir(dir_path):
+            # 统计图片数量
+            image_count = len([f for f in os.listdir(dir_path) 
+                             if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))])
+            if image_count > 0:
+                batches.append({
+                    'name': dirname,
+                    'count': image_count,
+                    'path': dir_path
+                })
+    
+    return sorted(batches, key=lambda x: x['name'], reverse=True)
+
+
+def interactive_import():
+    """交互式导入"""
+    batches = list_available_batches()
+    
+    if not batches:
+        print("没有找到可导入的批次")
+        return
+    
+    print("\n可用的批次：")
+    print("=" * 70)
+    for i, batch in enumerate(batches, 1):
+        print(f"{i}. {batch['name']} ({batch['count']} 张图片)")
+    print("=" * 70)
+    
+    try:
+        choice = input("\n请选择要导入的批次 [1-{}] (输入 'all' 导入全部, 'q' 退出): ".format(len(batches)))
+        
+        if choice.lower() == 'q':
+            print("已取消")
+            return
+        
+        if choice.lower() == 'all':
+            # 导入所有批次
+            print("\n开始导入所有批次...")
+            for batch in batches:
+                print(f"\n{'=' * 70}")
+                print(f"导入批次: {batch['name']}")
+                print(f"{'=' * 70}")
+                import_batch(batch['name'])
+            return
+        
+        # 导入单个批次
+        index = int(choice) - 1
+        if 0 <= index < len(batches):
+            selected = batches[index]['name']
+            
+            # 询问是否预览
+            preview = input(f"\n是否预览 '{selected}'? [y/N]: ")
+            if preview.lower() == 'y':
+                preview_import(selected)
+                
+                # 预览后询问是否继续导入
+                confirm = input("\n是否继续导入? [y/N]: ")
+                if confirm.lower() != 'y':
+                    print("已取消")
+                    return
+            
+            # 询问是否检查重复
+            check_dup = input("\n是否检查相似图片? [Y/n]: ")
+            check_duplicates = check_dup.lower() != 'n'
+            
+            threshold = 1
+            interactive_mode = False
+            
+            if check_duplicates:
+                threshold_input = input("相似度阈值 [1]: ")
+                if threshold_input.strip():
+                    try:
+                        threshold = int(threshold_input)
+                    except ValueError:
+                        threshold = 1
+                
+                # 询问是否交互模式
+                interactive_input = input("发现相似时询问? [y/N]: ")
+                interactive_mode = interactive_input.lower() == 'y'
+            
+            import_batch(selected, check_duplicates, threshold, interactive_mode)
+        else:
+            print("无效的选择")
+    
+    except ValueError:
+        print("无效的输入")
+    except KeyboardInterrupt:
+        print("\n\n已取消")
+
+
+def import_all_batches(check_duplicates=True, threshold=1, interactive=False):
+    """导入所有批次"""
+    batches = list_available_batches()
+    
+    if not batches:
+        print("没有找到可导入的批次")
+        return
+    
+    print(f"\n找到 {len(batches)} 个批次")
+    print("=" * 70)
+    
+    for i, batch in enumerate(batches, 1):
+        print(f"\n[{i}/{len(batches)}] 导入批次: {batch['name']}")
+        print("=" * 70)
+        import_batch(batch['name'], check_duplicates, threshold, interactive)
+
+
+def main():
+    # 解析参数
+    check_duplicates = True
+    threshold = 1  # 默认阈值改为1
+    interactive = False  # 默认非交互模式（自动跳过）
+    
+    # 检查是否有 --no-check 参数
+    if '--no-check' in sys.argv:
+        check_duplicates = False
+        sys.argv.remove('--no-check')
+    
+    # 检查是否有 --interactive 参数
+    if '--interactive' in sys.argv:
+        interactive = True
+        sys.argv.remove('--interactive')
+    
+    # 检查是否有 --threshold 参数
+    if '--threshold' in sys.argv:
+        idx = sys.argv.index('--threshold')
+        if idx + 1 < len(sys.argv):
+            try:
+                threshold = int(sys.argv[idx + 1])
+                sys.argv.pop(idx)  # 移除 --threshold
+                sys.argv.pop(idx)  # 移除阈值值
+            except ValueError:
+                pass
+    
+    if len(sys.argv) == 1:
+        # 无参数：交互式模式
+        interactive_import()
+        return
+    
+    if sys.argv[1] == '--all':
+        # 导入所有批次
+        import_all_batches(check_duplicates, threshold, interactive)
+        return
+    
+    if sys.argv[1] == '--help' or sys.argv[1] == '-h':
+        print("用法: python import.py [选项] [directory_name]")
+        print("\n无参数运行：交互式选择批次")
+        print("\n选项:")
+        print("  --all                        导入所有批次")
+        print("  --no-check                   跳过相似度检查")
+        print("  --threshold <n>              设置相似度阈值 (默认: 1)")
+        print("  --interactive                发现相似时询问用户 (默认自动跳过)")
+        print("  --help, -h                   显示帮助信息")
+        print("\n指定批次:")
+        print("  python import.py <directory_name>")
+        print("  python import.py <directory_name> --preview")
+        print("  python import.py <directory_name> --no-check")
+        print("  python import.py <directory_name> --threshold 5")
+        print("  python import.py <directory_name> --interactive")
+        print("\n示例:")
+        print("  python import.py                              # 交互式选择")
+        print("  python import.py --all                        # 导入所有，自动跳过重复")
+        print("  python import.py --all --interactive          # 导入所有，询问用户")
+        print("  python import.py --all --no-check             # 导入所有，不检查重复")
+        print("  python import.py artist_name_20241206_143022  # 导入指定批次")
+        return
+    
+    # 指定批次名
+    directory = sys.argv[1]
+    preview_mode = len(sys.argv) > 2 and sys.argv[2] == '--preview'
+    
+    if preview_mode:
+        preview_import(directory)
+    else:
+        import_batch(directory, check_duplicates, threshold, interactive)
+
+
+if __name__ == "__main__":
+    main()

@@ -5,7 +5,6 @@
 <svg width="0" height="0" style="position: absolute;" id="squircle-defs">
     <defs id="squircle-clips">
         <!-- 超椭圆 clip-path 会通过 JavaScript 动态生成 -->
-        <!-- 每个卡片使用固定 12px 半径，避免长方形变形 -->
     </defs>
 </svg>
 
@@ -416,39 +415,10 @@ document.addEventListener('DOMContentLoaded', function() {
         resizeTimer = setTimeout(() => {
             console.log('📐 窗口大小改变，重新布局...');
             redistributeCards();
-        }, 300); // 300ms 防抖延迟
+        }, 10); // 300ms 防抖延迟
     });
     
-    // iOS 调试信息（仅在开发时显示）
-    // 取消下面的注释以启用调试信息显示
-    /*
-    setTimeout(() => {
-        const debugInfo = document.createElement('div');
-        debugInfo.style.cssText = 'position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 8px; font-size: 12px; z-index: 9999; max-width: 300px;';
-        
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        const cards = document.querySelectorAll('.card');
-        const appliedCount = document.querySelectorAll('.card[data-clip-verified="yes"]').length;
-        const failedCount = document.querySelectorAll('.card[data-clip-verified="no"]').length;
-        const method = document.querySelector('.card[data-method]')?.getAttribute('data-method') || 'unknown';
-        
-        debugInfo.innerHTML = `
-            <strong>🔍 超椭圆调试</strong><br>
-            设备: ${isIOS ? 'iOS' : '非iOS'}<br>
-            浏览器: ${isSafari ? 'Safari' : '其他'}<br>
-            方法: ${method}<br>
-            总卡片: ${cards.length}<br>
-            成功: ${appliedCount}<br>
-            失败: ${failedCount}
-        `;
-        
-        document.body.appendChild(debugInfo);
-        
-        // 点击关闭
-        debugInfo.addEventListener('click', () => debugInfo.remove());
-    }, 500);
-    */
+
 });
 </script>
 
