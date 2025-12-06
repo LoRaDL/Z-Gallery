@@ -99,7 +99,15 @@ python download.py https://twitter.com/artist_name --resume artist_name_20241206
 
 # 创建新批次
 python download.py https://twitter.com/artist_name --new
+
+# 避免 rate limit（增加延迟）
+python download.py https://twitter.com/artist_name --sleep 2.0
 ```
+
+**关于 Rate Limit**：
+- 默认延迟：1秒/请求（配置文件中设置）
+- 如果遇到 rate limit，使用 `--sleep 2.0` 或更高
+- 续传时也会请求 API 检查已下载的项目，建议加延迟
 
 ### 其他功能
 

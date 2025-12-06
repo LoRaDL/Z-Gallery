@@ -97,7 +97,7 @@ def find_existing_batch(url, downloads_dir):
     return None
 
 
-def download(url, resume_dir=None, force_new=False):
+def download(url, resume_dir=None, force_new=False, sleep_time=None):
     """下载Twitter图片"""
     
     script_dir = os.path.dirname(__file__)
@@ -141,12 +141,18 @@ def download(url, resume_dir=None, force_new=False):
     command = [
         'gallery-dl',
         '--write-metadata',
+        '-o cursor=DAADDAABCgABG69gdnjbkgAKAAIbrstycVuQdQAIAAIAAAACCAADAAAAAAgABAAAACYKAAUbuADFAUAnEAoABhu4AMUBOgyQAAA',
         '--directory', output_dir,
         '--download-archive', archive_file,
         '--filter', "extension in ('jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp')",
         '--config', config.GALLERY_DL_CONFIG_PATH,
         url
     ]
+    
+    # 如果指定了延迟时间，添加到命令中（覆盖配置文件）
+    if sleep_time is not None:
+        command.extend(['--sleep-request', str(sleep_time)])
+        command.extend(['--sleep-extractor', str(sleep_time * 2)])
     
     print(f"开始下载...")
     print(f"命令: {' '.join(command)}\n")
@@ -187,6 +193,7 @@ def main():
         print("\n选项:")
         print("  --new                        创建新批次（默认会自动续传现有批次）")
         print("  --resume <directory_name>    续传指定批次")
+        print("  --sleep <seconds>            请求延迟（秒），避免rate limit（默认: 1.0）")
         print("  --list                       列出所有批次")
         sys.exit(1)
     
@@ -197,18 +204,34 @@ def main():
     url = sys.argv[1]
     resume_dir = None
     force_new = False
+    sleep_time = None
     
     # 解析参数
-    if len(sys.argv) > 2:
-        if sys.argv[2] == '--resume':
-            if len(sys.argv) < 4:
+    i = 2
+    while i < len(sys.argv):
+        if sys.argv[i] == '--resume':
+            if i + 1 >= len(sys.argv):
                 print("错误: --resume 需要指定目录名")
                 sys.exit(1)
-            resume_dir = sys.argv[3]
-        elif sys.argv[2] == '--new':
+            resume_dir = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i] == '--new':
             force_new = True
+            i += 1
+        elif sys.argv[i] == '--sleep':
+            if i + 1 >= len(sys.argv):
+                print("错误: --sleep 需要指定秒数")
+                sys.exit(1)
+            try:
+                sleep_time = float(sys.argv[i + 1])
+            except ValueError:
+                print("错误: --sleep 参数必须是数字")
+                sys.exit(1)
+            i += 2
+        else:
+            i += 1
     
-    download(url, resume_dir, force_new)
+    download(url, resume_dir, force_new, sleep_time)
 
 
 if __name__ == "__main__":
