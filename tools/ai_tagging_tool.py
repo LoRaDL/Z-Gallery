@@ -34,7 +34,7 @@ except ImportError:
     sys.exit(1)
 
 # 配置常量
-MODEL_NAME = "gemini-flash-latest"
+MODEL_NAME = "gemini-2.5-flash"
 DB_PATH = "zootopia_gallery.db"
 BATCH_SIZE = 10
 
@@ -152,7 +152,7 @@ def get_pending_artworks(limit=BATCH_SIZE):
     cursor = conn.cursor()
 
     # 动态构建查询条件
-    query_conditions = ["classification = 'sfw' AND category = 'fanart_non_comic'"]
+    query_conditions = ["category = 'fanart_non_comic'"]
 
     if INCLUDE_BLOCKED:
         query_conditions.append("(ai_caption IS NULL OR ai_caption = 'blocked')")
@@ -181,7 +181,7 @@ def get_pending_count():
 
     # 根据INCLUDE_BLOCKED开关决定查询条件
     if INCLUDE_BLOCKED:
-        cursor.execute("SELECT COUNT(*) FROM artworks WHERE (ai_caption IS NULL OR ai_caption = 'blocked') AND classification = 'sfw' AND category = 'fanart_non_comic'")
+        cursor.execute("SELECT COUNT(*) FROM artworks WHERE (ai_caption IS NULL OR ai_caption = 'blocked') AND category = 'fanart_non_comic'")
     else:
         cursor.execute("SELECT COUNT(*) FROM artworks WHERE ai_caption IS NULL AND classification = 'sfw' AND category = 'fanart_non_comic'")
 

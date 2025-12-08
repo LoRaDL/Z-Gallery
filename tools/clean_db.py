@@ -2,6 +2,10 @@ import os
 import sqlite3
 import sys
 from pathlib import Path
+from PIL import Image
+
+# 禁用 PIL 的解压炸弹保护（允许处理大图片）
+Image.MAX_IMAGE_PIXELS = None
 
 # 添加项目根目录到Python路径
 SCRIPT_DIR = Path(__file__).parent
@@ -34,33 +38,63 @@ def check_and_clean_paths():
         all_records = cursor.fetchall()
         
         invalid_records = []
+        corrupted_records = []
+        
         for record in all_records:
-            # os.path.exists() 是检查文件或目录是否存在的标准方法
-            if not os.path.exists(record['file_path']):
+            file_path = record['file_path']
+            
+            # 检查文件是否存在
+            if not os.path.exists(file_path):
                 invalid_records.append({
                     "id": record['id'],
-                    "path": record['file_path']
+                    "path": file_path,
+                    "reason": "文件不存在"
                 })
+            else:
+                # 文件存在，检查是否损坏
+                try:
+                    with Image.open(file_path) as img:
+                        img.verify()  # 验证图片完整性
+                except Exception as e:
+                    corrupted_records.append({
+                        "id": record['id'],
+                        "path": file_path,
+                        "reason": f"图片损坏: {str(e)}"
+                    })
+        
+        # 合并无效记录和损坏记录
+        all_invalid = invalid_records + corrupted_records
 
         print(f"扫描完成！共检查了 {len(all_records)} 条记录。")
         
         # --- 展示报告 ---
-        if not invalid_records:
-            print("\n恭喜！所有数据库记录的文件路径都有效。无需任何操作。")
+        if not all_invalid:
+            print("\n恭喜！所有数据库记录的文件都有效且完整。无需任何操作。")
             return
 
-        print(f"\n警告：发现了 {len(invalid_records)} 条无效的文件路径记录：")
-        for record in invalid_records:
-            print(f"  - ID: {record['id']:<6d} | 路径: {record['path']}")
+        print(f"\n警告：发现了 {len(all_invalid)} 条问题记录：")
+        
+        if invalid_records:
+            print(f"\n文件不存在 ({len(invalid_records)} 条):")
+            for record in invalid_records:
+                print(f"  - ID: {record['id']:<6d} | 路径: {record['path']}")
+        
+        if corrupted_records:
+            print(f"\n图片损坏 ({len(corrupted_records)} 条):")
+            for record in corrupted_records:
+                print(f"  - ID: {record['id']:<6d} | 原因: {record['reason']}")
+                print(f"    路径: {record['path']}")
 
         # --- 请求确认 ---
         print("\n你想要从数据库中永久删除以上这些记录吗？")
-        print("此操作不可恢复，但不会删除任何真实的文件（因为它们已经不存在了）。")
+        if corrupted_records:
+            print("注意：损坏的图片文件本身不会被删除，只会删除数据库记录。")
+            print("如果需要删除损坏的文件，请手动删除。")
         choice = input("请输入 'yes' 以确认删除: ")
 
         if choice.lower() == 'yes':
             # --- 执行删除 ---
-            ids_to_delete = [rec['id'] for rec in invalid_records]
+            ids_to_delete = [rec['id'] for rec in all_invalid]
             
             # 使用 'IN' 子句和参数化查询，一次性删除所有记录，高效且安全
             placeholders = ','.join(['?'] * len(ids_to_delete))
@@ -69,7 +103,22 @@ def check_and_clean_paths():
             cursor.execute(sql_query, ids_to_delete)
             conn.commit()
             
-            print(f"\n操作成功！已从数据库中删除了 {len(ids_to_delete)} 条无效记录。")
+            print(f"\n操作成功！已从数据库中删除了 {len(ids_to_delete)} 条问题记录。")
+            
+            # 询问是否删除损坏的文件
+            if corrupted_records:
+                print(f"\n发现 {len(corrupted_records)} 个损坏的图片文件。")
+                delete_files = input("是否同时删除这些损坏的文件？(yes/no): ")
+                if delete_files.lower() == 'yes':
+                    deleted_count = 0
+                    for record in corrupted_records:
+                        try:
+                            os.remove(record['path'])
+                            print(f"  已删除: {record['path']}")
+                            deleted_count += 1
+                        except Exception as e:
+                            print(f"  删除失败: {record['path']} - {e}")
+                    print(f"\n已删除 {deleted_count} 个损坏的文件。")
         else:
             print("\n操作已取消。数据库未作任何更改。")
 
