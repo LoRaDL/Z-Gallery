@@ -1,6 +1,26 @@
 {% extends "layout.html" %}
 {% block content %}
 
+<style>
+/* 响应式缩放和平滑过渡 */
+.gallery-grid {
+    transition: opacity 0.2s ease-out;
+}
+
+.card {
+    transition: transform 0.2s ease-out, clip-path 0.2s ease-out;
+}
+
+/* 在窗口调整大小时减少视觉闪烁 */
+.gallery-grid.resizing {
+    pointer-events: none;
+}
+
+.gallery-grid.resizing .card {
+    transition: none; /* 调整大小时禁用过渡以避免卡顿 */
+}
+</style>
+
 <!-- SVG 容器：用于存放动态生成的超椭圆 clip-path -->
 <svg width="0" height="0" style="position: absolute;" id="squircle-defs">
     <defs id="squircle-clips">
@@ -35,6 +55,8 @@
     <a href="{{ url_for('gallery', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
 
     <span class="separator">|</span>
+
+
 
     <!-- Rating Group -->
     <span class="filter-label">Rating:</span>
@@ -302,10 +324,18 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`✅ 初始超椭圆应用到 ${cards.length} 个卡片`);
     }
     
-    // 设置图片加载监听器的函数（在卡片分配后调用）
+    // 设置图片加载监听器和评分事件的函数（在卡片分配后调用）
     function setupImageLoadListeners() {
         const allImages = document.querySelectorAll('.card img');
         console.log(`🖼️ 找到 ${allImages.length} 张图片，开始监听加载`);
+        
+        // 为所有评分表单设置事件处理器
+        const ratingForms = document.querySelectorAll('.rating-form form');
+        ratingForms.forEach(form => {
+            if (window.setupRatingHandler) {
+                window.setupRatingHandler(form);
+            }
+        });
         
         allImages.forEach((img, imgIndex) => {
             const card = img.closest('.card');
@@ -346,12 +376,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 获取所有卡片（从所有列中）
-    const allCards = Array.from(document.querySelectorAll('.masonry-column .card'));
-    if (allCards.length === 0) return;
+    // 获取原始排序的卡片数据（按数据库排序）
+    const originalArtworks = {{ artworks | map(attribute='id') | list | tojson | safe }};
     
     // 获取宽高比数据
     const aspectRatios = {{ aspect_ratios | tojson | safe }};
+    
+    // 当前列数状态
+    let currentColumnCount = getColumnCount();
     
     // 根据屏幕宽度确定列数
     function getColumnCount() {
@@ -362,8 +394,19 @@ document.addEventListener('DOMContentLoaded', function() {
         else return 4;
     }
     
-    // 重新分配卡片到列的函数
-    function redistributeCards() {
+    // 初始化：保存原始DOM元素
+    const originalElements = new Map();
+    function initializeArtworkElements() {
+        originalArtworks.forEach(artworkId => {
+            const element = document.getElementById(`artwork-${artworkId}`);
+            if (element) {
+                originalElements.set(artworkId, element.cloneNode(true));
+            }
+        });
+    }
+    
+    // 保持排序的响应式重排函数
+    function redistributeCardsWithSorting() {
         const columnCount = getColumnCount();
         const columns = galleryGrid.querySelectorAll('.masonry-column');
         
@@ -378,44 +421,96 @@ document.addEventListener('DOMContentLoaded', function() {
         // 初始化列高度
         const columnHeights = new Array(columnCount).fill(0);
         
-        // 重新分配卡片
-        allCards.forEach(card => {
-            // 获取卡片的 artwork ID
-            const artworkId = parseInt(card.id.replace('artwork-', ''));
+        // 按原始排序重新分配卡片
+        originalArtworks.forEach(artworkId => {
+            const originalElement = originalElements.get(artworkId);
+            if (!originalElement) return;
+            
+            // 计算卡片高度
             const aspectRatio = aspectRatios[artworkId] || 1.0;
             const cardHeight = 1.0 / aspectRatio + 0.3;
             
             // 找到最短的列
             const minColIndex = columnHeights.indexOf(Math.min(...columnHeights));
             
-            // 将卡片添加到该列
-            columns[minColIndex].appendChild(card.cloneNode(true));
+            // 将卡片添加到该列（使用克隆的元素）
+            const cardClone = originalElement.cloneNode(true);
+            columns[minColIndex].appendChild(cardClone);
             
             // 更新列高度
             columnHeights[minColIndex] += cardHeight;
         });
         
-        // 卡片重新分配完成后，只设置图片加载监听（不立即应用超椭圆）
+        // 重新分配完成后，设置图片加载监听和超椭圆
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                console.log('🖼️ 设置图片加载监听...');
+                console.log('🖼️ 响应式重排完成，重新设置监听器...');
                 setupImageLoadListeners();
+                setTimeout(() => {
+                    applySquircleClipPaths();
+                }, 100);
             });
         });
     }
     
-    // 初始分配
-    redistributeCards();
+    // 初始化
+    initializeArtworkElements();
     
-    // 监听窗口大小变化
+    // 初始分配（如果需要）
+    const initialColumnCount = getColumnCount();
+    if (initialColumnCount !== 4) {
+        // 如果当前屏幕需要的列数不是4列，重新分配
+        redistributeCardsWithSorting();
+    } else {
+        // 否则直接设置监听器
+        setupImageLoadListeners();
+        setTimeout(() => {
+            applySquircleClipPaths();
+        }, 100);
+    }
+    
+    // 智能窗口大小变化处理
     let resizeTimer;
+    let isResizing = false;
+    
+    function handleResize() {
+        const newColumnCount = getColumnCount();
+        
+        // 只有当列数真正改变时才重排
+        if (newColumnCount !== currentColumnCount) {
+            console.log(`📐 列数改变: ${currentColumnCount} → ${newColumnCount}，重新布局...`);
+            currentColumnCount = newColumnCount;
+            redistributeCardsWithSorting();
+        } else {
+            // 列数没变，只需要更新clip path以适应新尺寸
+            console.log('📐 窗口大小改变但列数未变，更新clip paths...');
+            updateClipPathsForResize();
+        }
+    }
+    
+    // 更新clip paths以适应窗口缩放
+    function updateClipPathsForResize() {
+        const cards = document.querySelectorAll('.card');
+        cards.forEach((card, index) => {
+            // 延迟一点让布局稳定
+            setTimeout(() => {
+                applySquircleToCard(card, index);
+            }, 50);
+        });
+    }
+    
     window.addEventListener('resize', () => {
-        // 防抖：等待用户停止调整窗口大小后再重新布局
+        if (!isResizing) {
+            isResizing = true;
+            galleryGrid.classList.add('resizing');
+        }
+        
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            console.log('📐 窗口大小改变，重新布局...');
-            redistributeCards();
-        }, 10); // 300ms 防抖延迟
+            handleResize();
+            galleryGrid.classList.remove('resizing');
+            isResizing = false;
+        }, 150); // 减少防抖延迟，提高响应性
     });
     
 
