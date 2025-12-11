@@ -107,34 +107,10 @@ main {
     display: none;
 }
 
-/* 当 JavaScript 启用时，根据屏幕宽度显示对应的列 */
-/* 这些规则会在 JavaScript 添加 js-enabled 类后生效 */
-.js-enabled .masonry-column:nth-child(1) {
+/* 当 JavaScript 启用时，显示所有列（由模板控制具体数量） */
+.js-enabled .masonry-column {
     display: flex;
 }
-
-/* 大屏幕：显示4列 */
-@media (min-width: 1201px) {
-    .js-enabled .masonry-column:nth-child(-n+4) {
-        display: flex;
-    }
-}
-
-/* 中等屏幕：显示3列 */
-@media (min-width: 901px) and (max-width: 1200px) {
-    .js-enabled .masonry-column:nth-child(-n+3) {
-        display: flex;
-    }
-}
-
-/* 小屏幕：显示2列 */
-@media (min-width: 601px) and (max-width: 900px) {
-    .js-enabled .masonry-column:nth-child(-n+2) {
-        display: flex;
-    }
-}
-
-/* 手机屏幕：显示1列（已经是默认的） */
 
 /* 响应式布局：JavaScript 会动态调整列数和卡片分配 */
 /* 只调整间距 */

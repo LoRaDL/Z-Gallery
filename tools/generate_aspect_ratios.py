@@ -9,6 +9,7 @@ import os
 import sys
 from PIL import Image
 
+Image.MAX_IMAGE_PIXELS = None
 # 添加父目录到路径以便导入config
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config

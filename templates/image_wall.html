@@ -4,8 +4,6 @@
     /* 瀑布流布局：每列独立垂直排列 */
     .gallery-grid {
         display: flex !important;
-        /* 根据列数动态调整间隔：基础1.5rem，列数越多间隔越小 */
-        gap: {{ 1.5 / (columns / 4) }}rem !important;
         padding: 20px;
         align-items: flex-start !important;
         width: 100%;
@@ -17,7 +15,6 @@
         min-width: 0; /* 防止flex子元素溢出 */
         display: flex;
         flex-direction: column;
-        gap: {{ 1.5 / (columns / 4) }}rem !important;
     }
     
     /* 卡片不需要额外的margin */
@@ -58,53 +55,6 @@
     }
     
 
-    
-    /* 根据列数动态调整星星大小 */
-    .gallery-grid .rating-form button {
-        font-size: {{ 1.2 / (columns / 4) }}rem !important;
-        padding: {{ 0.2 / (columns / 4) }}rem {{ 0.3 / (columns / 4) }}rem !important;
-    }
-    
-    /* 根据列数动态调整文字大小 */
-    .gallery-grid .card-info .artist {
-        font-size: {{ 0.9 / (columns / 4) }}rem !important;
-    }
-    
-    .gallery-grid .card-info .title {
-        font-size: {{ 0.85 / (columns / 4) }}rem !important;
-    }
-    
-    /* 根据列数动态调整分类标签大小 */
-    .gallery-grid .card-classification {
-        font-size: {{ 0.7 / (columns / 4) }}rem !important;
-        padding: {{ 0.2 / (columns / 4) }}rem {{ 0.4 / (columns / 4) }}rem !important;
-    }
-    
-    /* 根据列数动态调整卡片信息区域 */
-    .gallery-grid .card-info {
-        padding: {{ 0.75 / (columns / 4) }}rem !important;
-    }
-    
-    .gallery-grid .card-info p {
-        margin: {{ 0.25 / (columns / 4) }}rem 0 !important;
-    }
-    
-    /* 覆盖响应式媒体查询 */
-    @media (max-width: 1200px) {
-        .gallery-grid { 
-            grid-template-columns: repeat({{ columns }}, 1fr) !important;
-        }
-    }
-    @media (max-width: 900px) {
-        .gallery-grid { 
-            grid-template-columns: repeat({{ columns }}, 1fr) !important;
-        }
-    }
-    @media (max-width: 600px) {
-        .gallery-grid { 
-            grid-template-columns: repeat({{ columns }}, 1fr) !important;
-        }
-    }
 </style>
 
 <div class="controls-container">
@@ -203,45 +153,32 @@
         <span>Total Images: {{ total_artworks }}</span>
     </div>
 
-    <div class="gallery-grid">
+    <div class="gallery-grid" id="gallery-grid">
         {% for col in range(columns) %}
-            <div class="masonry-column">
-                {% for art in artworks %}
-                    {% if artwork_columns[loop.index0] == col %}
-                        <div class="card" id="artwork-{{ art.id }}">
-                            <a href="{{ url_for('artwork_detail', artwork_id=art.id) }}#page-top" class="card-image-link">
-                                <img src="{{ url_for('static', filename='thumbnails/' + (art.thumbnail_filename or 'default.jpg')) }}" 
-                                     alt="{{ art.title or art.file_name }}" 
-                                     loading="lazy"
-                                     class="{% if art.classification == 'nsfw' %}blur-image{% endif %}"
-                                     {% if aspect_ratios.get(art.id) %}
-                                     style="aspect-ratio: {{ aspect_ratios.get(art.id) }};"
-                                     {% endif %}>
-                            </a>
-                            {% if art.classification in ['unspecified', 'mature', 'nsfw'] or art.classification is none %}
-                                <div class="card-classification">{{ art.classification|title if art.classification else 'Unspecified' }}</div>
-                            {% endif %}
-                            <div class="card-info">
-                                <p class="artist"><a href="{{ url_for('image_wall', artist=art.artist, columns=columns) }}">{{ art.artist or 'Unknown' }}</a></p>
-                                <p class="title">
-                                    <a href="{{ url_for('artwork_detail', artwork_id=art.id) }}#page-top">{{ art.title or 'Untitled' }}</a>
-                                </p>
-                                <div class="rating-form">
-                                    <form action="{{ url_for('rate_artwork', artwork_id=art.id) }}" method="post">
-                                        {% for i in range(1, 11) %}
-                                            <button type="submit" name="rating" value="{{ i }}" class="{{ 'rated' if art.rating and i <= art.rating }}">
-                                                {% if art.rating and i <= art.rating %}★{% else %}☆{% endif %}
-                                            </button>
-                                        {% endfor %}
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                {% endfor %}
+            <div class="masonry-column" data-column="{{ col }}">
+                <!-- 卡片将由 JavaScript 动态加载 -->
             </div>
         {% endfor %}
     </div>
+
+    <!-- 隐藏的卡片数据，供 JavaScript 使用 -->
+    <script type="application/json" id="artworks-data">
+    [
+        {% for art in artworks %}
+        {
+            "id": {{ art.id }},
+            "title": {{ (art.title or 'Untitled')|tojson }},
+            "artist": {{ (art.artist or 'Unknown')|tojson }},
+            "file_name": {{ art.file_name|tojson }},
+            "thumbnail_filename": {{ (art.thumbnail_filename or 'default.jpg')|tojson }},
+            "classification": {{ (art.classification or 'unspecified')|tojson }},
+            "rating": {{ art.rating or 0 }},
+            "column": {{ artwork_columns[loop.index0] }},
+            "aspect_ratio": {{ aspect_ratios.get(art.id, 1.0) }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+    </script>
     
     {% if not artworks %}
         <p>No artworks found matching your criteria.</p>
@@ -256,146 +193,320 @@
     <div style="height: 100vh;"></div>
 
 <script>
-// 滚动位置指示器 - 显示从页面顶部到当前视口底部的图片数量
+// 虚拟滚动和滚动位置指示器
 document.addEventListener('DOMContentLoaded', function() {
-    const indicator = document.getElementById('scroll-indicator');
-    const currentImageSpan = document.getElementById('current-image');
-    const cards = document.querySelectorAll('.card');
+    // 虚拟滚动配置
+    const BUFFER_SIZE = 50; // 视口外缓冲区大小（每个方向）
+    const CARD_ESTIMATE_HEIGHT = 300; // 估算卡片高度（用于初始计算）
     
-    if (cards.length === 0) return;
+    // 获取数据
+    const artworksData = JSON.parse(document.getElementById('artworks-data').textContent);
+    const galleryGrid = document.getElementById('gallery-grid');
+    const columnsCount = parseInt('{{ columns }}');
     
-    const totalCards = cards.length;
-    let isReady = false;
-    let cardPositions = []; // 缓存卡片绝对位置
-    let lastCount = 0;
-    let positionsCached = false;
+    // 按列分组数据
+    const columnData = Array.from({ length: columnsCount }, () => []);
+    artworksData.forEach(art => {
+        columnData[art.column].push(art);
+    });
     
-    // 一次性缓存所有卡片的绝对位置
-    function cacheCardPositions() {
-        console.log('缓存', totalCards, '个卡片位置...');
-        const startTime = performance.now();
+    // 虚拟滚动状态
+    const virtualState = {
+        visibleRanges: Array.from({ length: columnsCount }, () => ({ start: 0, end: 0 })),
+        renderedCards: new Set(),
+        cardElements: new Map(),
+        columnElements: [],
+        cardHeights: new Map(), // 缓存实际卡片高度
+        estimatedPositions: Array.from({ length: columnsCount }, () => []) // 每列的估算位置
+    };
+    
+    // 初始化列元素
+    virtualState.columnElements = Array.from(galleryGrid.querySelectorAll('.masonry-column'));
+    
+    // 应用动态样式
+    function applyDynamicStyles() {
+        const scaleFactor = columnsCount / 4;
+        const gap = (1.5 / scaleFactor).toFixed(2);
+        const fontSize = {
+            button: (1.2 / scaleFactor).toFixed(2),
+            artist: (0.9 / scaleFactor).toFixed(2),
+            title: (0.85 / scaleFactor).toFixed(2),
+            classification: (0.7 / scaleFactor).toFixed(2)
+        };
+        const padding = {
+            button: `${(0.2 / scaleFactor).toFixed(2)}rem ${(0.3 / scaleFactor).toFixed(2)}rem`,
+            classification: `${(0.2 / scaleFactor).toFixed(2)}rem ${(0.4 / scaleFactor).toFixed(2)}rem`,
+            cardInfo: (0.75 / scaleFactor).toFixed(2),
+            margin: (0.25 / scaleFactor).toFixed(2)
+        };
         
-        cardPositions = [];
-        cards.forEach((card) => {
-            const rect = card.getBoundingClientRect();
-            // 计算卡片相对于文档顶部的绝对位置
-            cardPositions.push(window.scrollY + rect.top);
-        });
-        
-        // 确保位置数组是排序的（应该已经是了，但保险起见）
-        cardPositions.sort((a, b) => a - b);
-        positionsCached = true;
-        
-        const endTime = performance.now();
-        console.log(`位置缓存完成，耗时: ${(endTime - startTime).toFixed(2)}ms`);
+        const style = document.createElement('style');
+        style.textContent = `
+            .gallery-grid { gap: ${gap}rem !important; }
+            .masonry-column { gap: ${gap}rem !important; }
+            .gallery-grid .rating-form button { 
+                font-size: ${fontSize.button}rem !important; 
+                padding: ${padding.button} !important; 
+            }
+            .gallery-grid .card-info .artist { font-size: ${fontSize.artist}rem !important; }
+            .gallery-grid .card-info .title { font-size: ${fontSize.title}rem !important; }
+            .gallery-grid .card-classification { 
+                font-size: ${fontSize.classification}rem !important; 
+                padding: ${padding.classification} !important; 
+            }
+            .gallery-grid .card-info { padding: ${padding.cardInfo}rem !important; }
+            .gallery-grid .card-info p { margin: ${padding.margin}rem 0 !important; }
+            .gallery-grid .card { border-radius: ${(24 / scaleFactor).toFixed(2)}px !important; }
+            .gallery-grid .card-image-link img { border-radius: ${(0 / scaleFactor).toFixed(2)}px !important; }
+        `;
+        document.head.appendChild(style);
     }
     
-    // 使用二分查找快速计算计数
-    function calculateCount(viewportBottom) {
-        if (!positionsCached || cardPositions.length === 0) {
-            return 0;
+    applyDynamicStyles();
+    
+    // 计算每列的估算位置（使用后端预计算的宽高比）
+    function calculateEstimatedPositions() {
+        // 动态计算实际卡片宽度
+        const galleryWidth = galleryGrid.offsetWidth - 40; // 减去padding
+        const gap = parseFloat(getComputedStyle(galleryGrid).gap) || 20;
+        const cardWidth = (galleryWidth - gap * (columnsCount - 1)) / columnsCount;
+        
+        for (let col = 0; col < columnsCount; col++) {
+            const positions = [];
+            let currentHeight = 0;
+            
+            columnData[col].forEach((art, index) => {
+                positions.push(currentHeight);
+                // 使用实际卡片宽度和宽高比计算高度
+                const aspectRatio = art.aspect_ratio || 1.0;
+                const imageHeight = cardWidth / aspectRatio;
+                const cardInfoHeight = 80; // 卡片信息区域高度
+                const cardHeight = imageHeight + cardInfoHeight;
+                const cardGap = 20; // 卡片间距
+                
+                currentHeight += cardHeight + cardGap;
+            });
+            
+            virtualState.estimatedPositions[col] = positions;
+        }
+    }
+    
+    // 创建卡片元素
+    function createCardElement(art) {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'card';
+        cardDiv.id = `artwork-${art.id}`;
+        cardDiv.dataset.artworkId = art.id;
+        
+        const blurClass = art.classification === 'nsfw' ? ' blur-image' : '';
+        const aspectStyle = art.aspect_ratio ? `style="aspect-ratio: ${art.aspect_ratio};"` : '';
+        
+        let classificationDiv = '';
+        if (['unspecified', 'mature', 'nsfw'].includes(art.classification)) {
+            const displayClass = art.classification === 'unspecified' ? 'Unspecified' : 
+                                art.classification.charAt(0).toUpperCase() + art.classification.slice(1);
+            classificationDiv = `<div class="card-classification">${displayClass}</div>`;
         }
         
-        // 二分查找：找到第一个位置 > viewportBottom 的索引
-        let left = 0;
-        let right = cardPositions.length - 1;
-        let result = cardPositions.length; // 默认所有卡片都在视口上方
+        let ratingButtons = '';
+        for (let i = 1; i <= 10; i++) {
+            const isRated = art.rating && i <= art.rating;
+            const ratedClass = isRated ? ' rated' : '';
+            const star = isRated ? '★' : '☆';
+            ratingButtons += `<button type="submit" name="rating" value="${i}" class="${ratedClass}">${star}</button>`;
+        }
         
-        while (left <= right) {
-            const mid = Math.floor((left + right) / 2);
-            if (cardPositions[mid] <= viewportBottom) {
-                left = mid + 1;
-            } else {
-                result = mid;
-                right = mid - 1;
+        cardDiv.innerHTML = `
+            <a href="/artwork/${art.id}#page-top" class="card-image-link">
+                <img src="/static/thumbnails/${art.thumbnail_filename}" 
+                     alt="${art.title}" 
+                     loading="lazy"
+                     class="${blurClass}"
+                     ${aspectStyle}>
+            </a>
+            ${classificationDiv}
+            <div class="card-info">
+                <p class="artist"><a href="/image-wall?artist=${encodeURIComponent(art.artist)}&columns=${columnsCount}">${art.artist}</a></p>
+                <p class="title">
+                    <a href="/artwork/${art.id}#page-top">${art.title}</a>
+                </p>
+                <div class="rating-form">
+                    <form action="/rate/${art.id}" method="post">
+                        ${ratingButtons}
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        // 为新创建的卡片绑定评分事件（使用公共函数）
+        const ratingForm = cardDiv.querySelector('.rating-form form');
+        if (ratingForm && window.setupRatingHandler) {
+            window.setupRatingHandler(ratingForm);
+        }
+        
+        return cardDiv;
+    }
+    
+    // 更新可见范围 - 基于实际DOM位置
+    function updateVisibleRanges() {
+        const scrollTop = window.scrollY;
+        const viewportHeight = window.innerHeight;
+        const buffer = viewportHeight * 2;
+        
+        const loadThreshold = scrollTop + viewportHeight + buffer;
+        
+        for (let col = 0; col < columnsCount; col++) {
+            const columnData_col = columnData[col];
+            const columnElement = virtualState.columnElements[col];
+            
+            if (!columnData_col || columnData_col.length === 0 || !columnElement) {
+                continue;
+            }
+            
+            const currentRange = virtualState.visibleRanges[col];
+            
+            // 检查是否需要加载更多
+            // 方法1：检查列的底部位置
+            const columnRect = columnElement.getBoundingClientRect();
+            const columnBottom = scrollTop + columnRect.bottom;
+            
+            if (columnBottom < loadThreshold && currentRange.end < columnData_col.length) {
+                // 需要加载更多，一次加载一批
+                const batchSize = Math.min(20, columnData_col.length - currentRange.end);
+                virtualState.visibleRanges[col] = {
+                    start: currentRange.start,
+                    end: currentRange.end + batchSize
+                };
             }
         }
-        
-        return result;
     }
     
-    // 动画更新函数（高频率，只处理动画）
-    function updateAnimation() {
-        // 计算当前滚动位置到页面最底端的距离
-        const documentHeight = document.documentElement.scrollHeight;
-        const currentScrollBottom = window.scrollY + window.innerHeight;
-        const distanceToPageBottom = documentHeight - currentScrollBottom;
+    // 渲染可见卡片 - 只向下加载，上方保持
+    function renderVisibleCards() {
+        for (let col = 0; col < columnsCount; col++) {
+            const range = virtualState.visibleRanges[col];
+            const columnElement = virtualState.columnElements[col];
+            
+            // 只添加新的卡片，不移除已有的
+            for (let i = range.start; i < range.end; i++) {
+                const art = columnData[col][i];
+                const cardId = `artwork-${art.id}`;
+                
+                if (!virtualState.renderedCards.has(cardId)) {
+                    // 创建新卡片
+                    const cardElement = createCardElement(art);
+                    virtualState.cardElements.set(cardId, cardElement);
+                    columnElement.appendChild(cardElement);
+                    virtualState.renderedCards.add(cardId);
+                    
+                    // 缓存实际高度
+                    setTimeout(() => {
+                        const rect = cardElement.getBoundingClientRect();
+                        virtualState.cardHeights.set(cardId, rect.height);
+                    }, 0);
+                }
+            }
+        }
+    }
+    
+    // 初始化虚拟滚动
+    function initVirtualScroll() {
+        calculateEstimatedPositions();
         
-        // 计算动画进度：当距离从3屏高度缩小到0时，进度从0到1
-        const animationRange = window.innerHeight * 3; // 3屏高度的过渡段
+        // 初始化时显示每列的前几个卡片
+        for (let col = 0; col < columnsCount; col++) {
+            const initialCount = Math.min(15, columnData[col].length); // 每列显示前15个
+            virtualState.visibleRanges[col] = { start: 0, end: initialCount };
+        }
+        
+        renderVisibleCards();
+        updateScrollIndicator();
+    }
+    
+    // 滚动事件处理
+    let scrollTimeout;
+    function handleScroll() {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            updateVisibleRanges();
+            renderVisibleCards();
+            updateScrollIndicator(); // 添加滚动指示器更新
+        }, 16); // ~60fps
+    }
+    
+    // 窗口大小变化处理
+    function handleResize() {
+        calculateEstimatedPositions();
+        updateVisibleRanges();
+        renderVisibleCards();
+    }
+    
+    // 滚动位置指示器逻辑（适配虚拟滚动）
+    const indicator = document.getElementById('scroll-indicator');
+    const currentImageSpan = document.getElementById('current-image');
+    const totalCards = artworksData.length;
+    
+    // 滚动指示器：基于用户滚动位置计算看过的图片数量
+    function updateScrollIndicator() {
+        if (!currentImageSpan || !indicator) return; // 防护检查
+        
+        const scrollTop = window.scrollY;
+        const viewportBottom = scrollTop + window.innerHeight;
+        
+        // 基于实际DOM元素计算看过的卡片数量
+        let viewedCount = 0;
+        
+        // 遍历所有已渲染的卡片
+        virtualState.renderedCards.forEach(cardId => {
+            const cardElement = virtualState.cardElements.get(cardId);
+            if (cardElement) {
+                const cardRect = cardElement.getBoundingClientRect();
+                const cardTop = scrollTop + cardRect.top;
+                
+                // 如果卡片顶部在视口底部以上，说明用户看过了
+                if (cardTop <= viewportBottom) {
+                    viewedCount++;
+                }
+            }
+        });
+        
+        currentImageSpan.textContent = Math.min(viewedCount, totalCards);
+        
+        // 动画效果
+        const documentHeight = document.documentElement.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        const maxScroll = documentHeight - viewportHeight;
+        
+        if (maxScroll <= 0) return; // 防止除零错误
+        
+        const distanceToPageBottom = maxScroll - scrollTop;
+        const animationRange = viewportHeight * 3;
         const progress = Math.max(0, Math.min(1, 1 - (distanceToPageBottom / animationRange)));
         
-        // 计算缩放：从1到2（线性）
         const scale = 1 + progress;
-        // 计算背景透明度：从0.8到0（线性）
         const bgOpacity = 0.8 * (1 - progress);
-        // 计算垂直位置：从bottom 20px到50%（线性）
         const bottomValue = 20 + (50 - 20) * progress;
         
-        // 应用样式，使用CSS transition实现快速缓动
         indicator.style.bottom = `${bottomValue}%`;
         indicator.style.transform = `translate(-50%, 50%) scale(${scale})`;
         indicator.style.background = `rgba(0, 0, 0, ${bgOpacity})`;
         indicator.style.boxShadow = bgOpacity > 0 ? `0 4px 12px rgba(0, 0, 0, ${bgOpacity * 0.375})` : 'none';
-    }
-    
-    // 计数更新函数（现在很快，可以高频率调用）
-    function updateCount() {
-        if (!positionsCached) return;
         
-        const viewportBottom = window.scrollY + window.innerHeight;
-        const count = calculateCount(viewportBottom);
-        
-        // 只有当计数大于0时才显示指示器（说明布局已经完成）
-        if (count > 0 && !isReady) {
-            isReady = true;
+        // 显示指示器
+        if (!indicator.style.opacity || indicator.style.opacity === '0') {
             indicator.style.opacity = '1';
         }
-        
-        // 只有计数变化时才更新DOM
-        if (count !== lastCount) {
-            currentImageSpan.textContent = count;
-            lastCount = count;
-        }
     }
     
-    // 监听滚动事件：分离动画和计数更新
-    window.addEventListener('scroll', () => {
-        updateAnimation(); // 立即更新动画
-        updateCount(); // 现在很快，可以立即更新
-    }, { passive: true });
+    // 绑定事件
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize, { passive: true });
     
-    // 监听窗口大小变化：需要重新缓存位置
-    window.addEventListener('resize', () => {
-        positionsCached = false; // 标记需要重新缓存
-        updateAnimation();
-        // 延迟重新缓存，等待布局稳定
-        setTimeout(() => {
-            cacheCardPositions();
-            updateCount();
-        }, 100);
-    }, { passive: true });
+    // 初始化
+    initVirtualScroll();
     
-    // 等待页面完全加载后初始化
-    function initializeWhenReady() {
-        // 检查是否有卡片已经渲染并有实际尺寸
-        const firstCard = cards[0];
-        if (firstCard && firstCard.getBoundingClientRect().height > 0) {
-            cacheCardPositions(); // 缓存所有位置
-            updateAnimation();
-            updateCount();
-        } else {
-            // 如果还没准备好，继续等待
-            setTimeout(initializeWhenReady, 200);
-        }
-    }
-    
-    // 页面加载完成后开始检查
-    if (document.readyState === 'complete') {
-        initializeWhenReady();
-    } else {
-        window.addEventListener('load', initializeWhenReady);
-    }
+    // 初始化指示器
+    updateScrollIndicator();
 });
 </script>
 

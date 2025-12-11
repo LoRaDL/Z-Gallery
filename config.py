@@ -25,4 +25,4 @@ TEMP_UPLOADS_DIR = "temp_uploads"
 STATIC_DIR = "static"
 
 # 8. 图片显示配置
-ENABLE_FULL_RES_CARD_IMAGES = False
+ENABLE_FULL_RES_CARD_IMAGES = True

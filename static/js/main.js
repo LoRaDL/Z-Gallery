@@ -1,104 +1,112 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- 逻辑1: 无刷新评级 (代码无变化) ---
-    const ratingForms = document.querySelectorAll('.rating-form form, .rating-form-detail form');
+// 公共的评分处理函数
+window.setupRatingHandler = function(form) {
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const url = form.action;
+        const clickedButton = event.submitter;
+        if (!clickedButton) return;
 
-    ratingForms.forEach(form => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const url = form.action;
-            const clickedButton = event.submitter;
-            if (!clickedButton) return;
+        const ratingValue = parseInt(clickedButton.value);
+        const formData = new FormData();
+        formData.append('rating', ratingValue);
 
-            const ratingValue = parseInt(clickedButton.value);
-            const formData = new FormData();
-            formData.append('rating', ratingValue);
-
-            const stars = form.querySelectorAll('button');
+        const stars = form.querySelectorAll('button');
+        
+        // 触觉反馈 - iPhone震动
+        if ('vibrate' in navigator) {
+            // 标准震动API（Android和部分设备）
+            navigator.vibrate(10); // 10ms轻微震动
+        }
+        if (window.navigator && window.navigator.vibrate) {
+            // 备用方案
+            window.navigator.vibrate(10);
+        }
+        // iOS Haptic Feedback（需要用户交互触发）
+        try {
+            if (window.Taptic && window.Taptic.impact) {
+                window.Taptic.impact('light');
+            }
+        } catch (e) {
+            // Taptic不可用，忽略
+        }
+        
+        // 立即显示"pending"状态 - 半亮的星
+        stars.forEach(star => {
+            const starValue = parseInt(star.value);
+            star.classList.remove('rated', 'pending');
             
-            // 触觉反馈 - iPhone震动
-            if ('vibrate' in navigator) {
-                // 标准震动API（Android和部分设备）
-                navigator.vibrate(10); // 10ms轻微震动
+            if (starValue <= ratingValue) {
+                star.textContent = '★'; // 实心
+                star.classList.add('pending'); // 添加pending类
+            } else {
+                star.textContent = '☆'; // 空心
             }
-            if (window.navigator && window.navigator.vibrate) {
-                // 备用方案
-                window.navigator.vibrate(10);
-            }
-            // iOS Haptic Feedback（需要用户交互触发）
-            try {
-                if (window.Taptic && window.Taptic.impact) {
-                    window.Taptic.impact('light');
-                }
-            } catch (e) {
-                // Taptic不可用，忽略
-            }
-            
-            // 立即显示"pending"状态 - 半亮的星
-            stars.forEach(star => {
-                const starValue = parseInt(star.value);
-                star.classList.remove('rated', 'pending');
-                
-                if (starValue <= ratingValue) {
-                    star.textContent = '★'; // 实心
-                    star.classList.add('pending'); // 添加pending类
-                } else {
-                    star.textContent = '☆'; // 空心
-                }
+        });
+
+        try {
+            // 发送 AJAX 请求
+            const response = await fetch(url, {
+                method: 'POST',
+                body: new URLSearchParams(formData),
+                // 添加这个头，让后端知道这是一个 AJAX 请求
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
 
-            try {
-                // 发送 AJAX 请求
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: new URLSearchParams(formData),
-                    // 添加这个头，让后端知道这是一个 AJAX 请求
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            if (response.ok) {
+                // 解析后端返回的JSON数据
+                const data = await response.json();
+                const finalRating = data.new_rating; // 可能是数字，也可能是 null
+
+                // --- 核心UI更新逻辑 - 移除pending，添加最终状态 ---
+                stars.forEach(star => {
+                    const starValue = parseInt(star.value);
+                    star.classList.remove('pending');
+                    
+                    // 如果有最终评分，且星星的值小于等于它
+                    if (finalRating && starValue <= finalRating) {
+                        star.textContent = '★'; // 实心
+                        star.classList.add('rated');
+                    } else {
+                        star.textContent = '☆'; // 空心
+                        star.classList.remove('rated');
+                    }
                 });
 
-                if (response.ok) {
-                    // 解析后端返回的JSON数据
-                    const data = await response.json();
-                    const finalRating = data.new_rating; // 可能是数字，也可能是 null
-
-                    // --- 核心UI更新逻辑 - 移除pending，添加最终状态 ---
-                    stars.forEach(star => {
-                        const starValue = parseInt(star.value);
-                        star.classList.remove('pending');
-                        
-                        // 如果有最终评分，且星星的值小于等于它
-                        if (finalRating && starValue <= finalRating) {
-                            star.textContent = '★'; // 实心
-                            star.classList.add('rated');
-                        } else {
-                            star.textContent = '☆'; // 空心
-                            star.classList.remove('rated');
-                        }
-                    });
-
-                    // 更新详情页的文字
-                    const currentRatingSpan = form.querySelector('.current-rating') || form.closest('.detail-info')?.querySelector('.current-rating');
-                    if (currentRatingSpan) {
-                        currentRatingSpan.textContent = `(Current: ${finalRating || 'Unrated'}/10)`;
-                    }
-                } else {
-                    // 请求失败，恢复原状态
-                    console.error('Rating update failed:', response.statusText);
-                    stars.forEach(star => {
-                        star.classList.remove('pending');
-                        star.textContent = '☆';
-                        star.classList.remove('rated');
-                    });
+                // 更新详情页的文字
+                const currentRatingSpan = form.querySelector('.current-rating') || form.closest('.detail-info')?.querySelector('.current-rating');
+                if (currentRatingSpan) {
+                    currentRatingSpan.textContent = `(Current: ${finalRating || 'Unrated'}/10)`;
                 }
-            } catch (error) {
-                // 网络错误，恢复原状态
-                console.error('An error occurred during fetch:', error);
+            } else {
+                // 请求失败，恢复原状态
+                console.error('Rating update failed:', response.statusText);
                 stars.forEach(star => {
                     star.classList.remove('pending');
                     star.textContent = '☆';
                     star.classList.remove('rated');
                 });
             }
-        });
+        } catch (error) {
+            // 网络错误，恢复原状态
+            console.error('An error occurred during fetch:', error);
+            stars.forEach(star => {
+                star.classList.remove('pending');
+                star.textContent = '☆';
+                star.classList.remove('rated');
+            });
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 为HTML元素添加js-enabled类，用于CSS控制非JS设备的元素显示
+    document.documentElement.classList.add('js-enabled');
+    
+    // --- 逻辑1: 无刷新评级 (代码无变化) ---
+    const ratingForms = document.querySelectorAll('.rating-form form, .rating-form-detail form');
+
+    ratingForms.forEach(form => {
+        setupRatingHandler(form);
     });
 
     // --- 逻辑2: 新增的无刷新分级 ---
