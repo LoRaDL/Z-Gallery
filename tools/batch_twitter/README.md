@@ -1,5 +1,20 @@
 # Twitter 批量下载和导入工具
 
+## 新功能：LLM辅助分类
+
+现在支持使用本地LMstudio进行自动分类！
+
+### LMstudio配置
+
+1. **安装并启动LMstudio**
+2. **加载支持视觉的模型**（如llava、qwen2-vl等）
+3. **确保服务运行在默认端口** (http://localhost:1234)
+
+### 测试LMstudio连接
+```bash
+python test_lmstudio.py
+```
+
 ## 快速开始
 
 ### 1. 下载图片
@@ -28,13 +43,13 @@ python download.py https://twitter.com/artist_name --new
 ### 2. 人工清洗
 打开 `downloads/<目录名>/` 文件夹，删除不需要的图片。
 
-### 3. 导入到数据库
+### 3. 导入到数据库（支持LLM分类）
 
 **交互式导入（推荐）**：
 ```bash
 python import.py
 ```
-会列出所有批次，让你选择要导入哪个，并可选择是否检查相似图片。
+会列出所有批次，让你选择要导入哪个，并可配置LLM分类和相似度检查。
 
 **导入所有批次**：
 ```bash
@@ -46,26 +61,37 @@ python import.py --all
 python import.py <目录名>
 ```
 
-**跳过相似度检查**：
+**新增选项**：
 ```bash
-python import.py <目录名> --no-check
-```
+# 禁用LLM分类
+python import.py <目录名> --no-llm
 
-**自定义相似度阈值**：
-```bash
+# 干运行模式（不写入数据库，仅预览）
+python import.py <目录名> --dry-run
+
+# 跳过相似度检查
+python import.py <目录名> --no-check
+
+# 自定义相似度阈值
 python import.py <目录名> --threshold 15
 ```
 
 示例：
 ```bash
-# 交互式选择（会询问是否检查相似）
+# 交互式选择（会询问LLM分类、干运行等选项）
 python import.py
 
-# 导入所有（默认检查相似）
+# 导入所有（默认启用LLM分类和相似度检查）
 python import.py --all
 
-# 导入指定批次（默认检查相似）
+# 导入指定批次（默认启用LLM分类）
 python import.py artist_name_20241206_143022
+
+# 禁用LLM分类的快速导入
+python import.py artist_name_20241206_143022 --no-llm
+
+# 干运行模式（预览分类结果，不写入数据库）
+python import.py artist_name_20241206_143022 --dry-run
 
 # 导入但不检查相似（快速模式）
 python import.py artist_name_20241206_143022 --no-check
@@ -76,6 +102,12 @@ python import.py artist_name_20241206_143022 --threshold 5
 # 交互模式（询问用户）
 python import.py artist_name_20241206_143022 --interactive
 ```
+
+**LLM分类说明**：
+- **Category分类**：fanart（插画）、real_photo（真实照片）、other（其他）
+- **Content分类**：sfw（安全）、mature（暗示性）、nsfw（明确成人内容）
+- 默认启用，可用 `--no-llm` 禁用
+- 使用 `--dry-run` 可预览分类结果而不写入数据库
 
 **相似度检查说明**：
 - 默认阈值：1（几乎完全相同）
@@ -115,8 +147,14 @@ python download.py https://twitter.com/artist_name --sleep 2.0
 # 列出所有下载批次
 python download.py --list
 
-# 预览导入（不实际导入）
+# 预览导入（不实际导入，支持LLM分类预览）
 python import.py <目录名> --preview
+
+# 干运行模式（预览LLM分类结果）
+python import.py <目录名> --dry-run
+
+# 测试LMstudio连接
+python test_lmstudio.py
 
 # 查看帮助
 python import.py --help
@@ -132,9 +170,13 @@ python download.py https://twitter.com/artist_name
 
 # 人工清洗
 
-# 导入新内容
+# 导入新内容（启用LLM分类）
 python import.py artist_name_20241206_143022
 # → 自动跳过数据库中已存在的
+# → LLM自动分类新图片
+
+# 或者先预览分类结果
+python import.py artist_name_20241206_143022 --dry-run
 ```
 
 ## 目录结构
@@ -156,3 +198,11 @@ downloads/
 - 导入时会自动检查重复（基于 platform + artist + title）
 - 删除图片后对应的 JSON 文件也可以删除
 - archive 文件用于断点续传，不要删除
+
+### LLM分类注意事项
+
+- **确保LMstudio正在运行**并加载了支持视觉的模型
+- 推荐模型：llava、qwen2-vl、minicpm-v等
+- 分类过程会增加导入时间，可用 `--no-llm` 禁用
+- 使用 `--dry-run` 可以预览分类结果而不实际导入
+- LLM分类失败时会使用默认值：fanart_non_comic + sfw

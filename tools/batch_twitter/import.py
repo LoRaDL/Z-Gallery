@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Twitter批量导入工具
-用法: python import.py <directory_name> [--preview]
+用法: python import.py <directory_name> [--preview] [--dry-run] [--no-llm]
 """
 
 import sys
@@ -9,6 +9,10 @@ import os
 import json
 import re
 import sqlite3
+import base64
+import time
+import requests
+import io
 from PIL import Image
 import imagehash
 
@@ -17,6 +21,195 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import config
 import artwork_importer
 import twitter_metadata_parser
+
+# LLM配置
+# 确保LMstudio正在运行并加载了支持视觉的模型（如llava、qwen2-vl等）
+LM_STUDIO_BASE_URL = "http://localhost:1234/v1"
+LM_STUDIO_MODEL = "local-model"  # LMstudio中的模型名称，通常为"local-model"
+
+# 默认开关
+ENABLE_LLM_CLASSIFICATION = True  # 默认启用LLM分类
+DRY_RUN_MODE = False  # 干运行模式：不写入数据库
+
+
+# LLM分类提示词
+SYSTEM_PROMPT = """You are an expert in analyzing and tagging artworks.
+You will receive a single fanart image (may from the movie *Zootopia*).
+Your task is to analyze the image and output structured information.
+
+First, provide a brief analysis of what you see in the image, then give your classifications.
+
+Output format:
+Analysis: [...]
+
+Category: [choose ONE]
+- fanart: Artwork, illustrations, drawings (including both single images and comics)
+- real_photo: Real photographs, cosplay photos, physical merchandise photos
+- other: Screenshots, memes, text-heavy images, UI elements, non-art content
+
+Classification: [choose ONE]
+- sfw: Safe for work. Fully clothed characters, everyday scenes, casual swimwear/beach scenes, hugs, kisses, romantic moments without suggestive elements. When in doubt between sfw and mature, choose sfw.
+- mature: Clearly suggestive content. Revealing underwear, lingerie, partial nudity showing private areas, overtly sexual poses, intimate scenes with sexual tension. Must have clear suggestive intent.
+- nsfw: Explicit content. Full nudity with genitalia visible, sexual acts depicted, explicit sexual situations
+
+Example output:
+Analysis: This is a digital artwork showing two anthropomorphic characters in casual clothing having a friendly conversation in a park setting. The art style is cartoon-like with bright colors and clean lines.
+Category: fanart
+Classification: sfw"""
+
+
+def resize_image_for_llm(image_path, max_size=896):
+    """将图片下采样到指定最长边尺寸"""
+    try:
+        with Image.open(image_path) as img:
+            # 获取原始尺寸
+            width, height = img.size
+            
+            # 如果图片已经足够小，直接返回
+            if max(width, height) <= max_size:
+                return img.copy()
+            
+            # 计算缩放比例
+            if width > height:
+                new_width = max_size
+                new_height = int(height * max_size / width)
+            else:
+                new_height = max_size
+                new_width = int(width * max_size / height)
+            
+            # 缩放图片
+            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            return resized_img
+            
+    except Exception as e:
+        print(f"  错误: 无法处理图片 {image_path}: {e}")
+        return None
+
+
+def encode_image_to_base64(image_path, max_size=896):
+    """将图片下采样并编码为base64"""
+    try:
+        # 下采样图片
+        resized_img = resize_image_for_llm(image_path, max_size)
+        if resized_img is None:
+            return None
+        
+        # 转换为JPEG格式并编码
+        buffer = io.BytesIO()
+        
+        # 如果是RGBA模式，转换为RGB
+        if resized_img.mode == 'RGBA':
+            # 创建白色背景
+            background = Image.new('RGB', resized_img.size, (255, 255, 255))
+            background.paste(resized_img, mask=resized_img.split()[-1])  # 使用alpha通道作为mask
+            resized_img = background
+        elif resized_img.mode != 'RGB':
+            resized_img = resized_img.convert('RGB')
+        
+        resized_img.save(buffer, format='JPEG', quality=85)
+        buffer.seek(0)
+        
+        return base64.b64encode(buffer.getvalue()).decode('utf-8')
+        
+    except Exception as e:
+        print(f"  错误: 无法编码图片 {image_path}: {e}")
+        return None
+
+
+def classify_with_lmstudio(image_path, enable_streaming=True):
+    """使用LMstudio进行图片分类，支持流式输出"""
+    try:
+        # 编码图片（下采样到896px）
+        image_data = encode_image_to_base64(image_path, max_size=896)
+        if not image_data:
+            return None, None
+        
+        # 构建请求
+        payload = {
+            "model": LM_STUDIO_MODEL,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": SYSTEM_PROMPT
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_data}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "max_tokens": 300,
+            "temperature": 0.1,
+            "stream": enable_streaming
+        }
+        
+        # 发送请求
+        response = requests.post(
+            f"{LM_STUDIO_BASE_URL}/chat/completions",
+            json=payload,
+            timeout=60,
+            stream=enable_streaming
+        )
+        
+        if response.status_code == 200:
+            if enable_streaming:
+                # 流式处理
+                content = ""
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            data = line[6:]  # 移除 'data: ' 前缀
+                            if data.strip() == '[DONE]':
+                                break
+                            try:
+                                chunk = json.loads(data)
+                                if 'choices' in chunk and len(chunk['choices']) > 0:
+                                    delta = chunk['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        chunk_content = delta['content']
+                                        content += chunk_content
+                                        print(chunk_content, end='', flush=True)
+                            except json.JSONDecodeError:
+                                continue
+                print()  # 换行
+            else:
+                # 非流式处理
+                result = response.json()
+                content = result['choices'][0]['message']['content']
+            
+            # 解析响应
+            analysis = None
+            category = None
+            classification = None
+            
+            for line in content.split('\n'):
+                line = line.strip()
+                if line.startswith('Analysis:'):
+                    analysis = line.replace('Analysis:', '').strip()
+                elif line.startswith('Category:'):
+                    category = line.replace('Category:', '').strip()
+                elif line.startswith('Classification:'):
+                    classification = line.replace('Classification:', '').strip()
+            
+            # 映射category：fanart -> fanart_non_comic
+            if category == 'fanart':
+                category = 'fanart_non_comic'
+            
+            return category, classification
+        else:
+            print(f"HTTP {response.status_code}")
+            return None, None
+            
+    except Exception as e:
+        print(f"失败: {e}")
+        return None, None
 
 
 def parse_gallery_dl_metadata(json_path):
@@ -44,7 +237,7 @@ def parse_gallery_dl_metadata(json_path):
     return extracted
 
 
-def preview_import(directory):
+def preview_import(directory, enable_llm=True):
     """预览将要导入的内容"""
     script_dir = os.path.dirname(__file__)
     downloads_dir = os.path.join(script_dir, 'downloads')
@@ -63,6 +256,10 @@ def preview_import(directory):
         sys.exit(1)
     
     print(f"\n预览导入: {directory}")
+    if enable_llm:
+        print("LLM分类: 启用")
+    else:
+        print("LLM分类: 禁用")
     print("=" * 70)
     
     will_import = 0
@@ -104,7 +301,20 @@ def preview_import(directory):
             if metadata.get('_total_images', 1) > 1:
                 multi_info = f" [{metadata['_image_position']}/{metadata['_total_images']}]"
             
-            print(f"✓ {filename}{multi_info}")
+            # LLM分类预览
+            llm_info = ""
+            if enable_llm:
+                image_path = os.path.join(target_dir, filename)
+                print(f"  🤖 正在分析: {filename}...")
+                print(f"     ", end="", flush=True)
+                category, classification = classify_with_lmstudio(image_path, enable_streaming=True)
+                if category and classification:
+                    llm_info = f" [{category}] [{classification}]"
+                    print(f"\n     结果: {llm_info}")
+                else:
+                    print(f"\n     结果: 分类失败")
+            
+            print(f"✓ {filename}{multi_info}{llm_info}")
             print(f"  → {metadata['artist']}: {metadata['title'][:60]}")
             will_import += 1
             
@@ -194,7 +404,7 @@ def ask_user_decision(filename, similar_images):
             return 'q'
 
 
-def import_batch(directory, check_duplicates=True, threshold=1, interactive=False):
+def import_batch(directory, check_duplicates=True, threshold=1, interactive=False, enable_llm=True, dry_run=False):
     """批量导入指定目录中的图片"""
     script_dir = os.path.dirname(__file__)
     downloads_dir = os.path.join(script_dir, 'downloads')
@@ -223,6 +433,12 @@ def import_batch(directory, check_duplicates=True, threshold=1, interactive=Fals
     print(f"找到 {len(image_files)} 张图片")
     if check_duplicates:
         print(f"相似度检查: 开启 (阈值: {threshold})")
+    if enable_llm:
+        print(f"LLM分类: 启用")
+    else:
+        print(f"LLM分类: 禁用")
+    if dry_run:
+        print("⚠️  干运行模式: 不会写入数据库")
     print("=" * 70)
     
     success_count = 0
@@ -310,6 +526,33 @@ def import_batch(directory, check_duplicates=True, threshold=1, interactive=Fals
                         skip_count += 1
                         continue
             
+            # LLM分类
+            llm_category = None
+            llm_classification = None
+            if enable_llm:
+                print(f"  🤖 LLM分析中...")
+                print(f"     ", end="", flush=True)
+                llm_category, llm_classification = classify_with_lmstudio(image_path, enable_streaming=True)
+                if llm_category and llm_classification:
+                    print(f"\n     结果: [{llm_category}] [{llm_classification}]")
+                    # 更新metadata中的分类信息
+                    metadata['category'] = llm_category
+                    metadata['classification'] = llm_classification
+                else:
+                    print(f"\n     结果: 分类失败，使用默认值")
+                    metadata['category'] = 'fanart_non_comic'
+                    metadata['classification'] = 'sfw'
+            
+            # 干运行模式
+            if dry_run:
+                print(f"  ✓ 干运行: 将导入 (模拟)")
+                title_display = metadata.get('title') or '(无标题)'
+                print(f"     {metadata['artist']}: {title_display[:60]}")
+                if enable_llm and llm_category and llm_classification:
+                    print(f"     分类: {llm_category} / {llm_classification}")
+                success_count += 1
+                continue
+            
             # 调用统一入库接口
             success, artwork_id, error = artwork_importer.add_artwork_to_database(
                 file_path=image_path,
@@ -324,6 +567,8 @@ def import_batch(directory, check_duplicates=True, threshold=1, interactive=Fals
                 # 安全地显示标题
                 title_display = metadata.get('title') or '(无标题)'
                 print(f"     {metadata['artist']}: {title_display[:60]}")
+                if enable_llm and llm_category and llm_classification:
+                    print(f"     分类: {llm_category} / {llm_classification}")
                 conn.commit()
                 success_count += 1
             else:
@@ -395,13 +640,42 @@ def interactive_import():
             return
         
         if choice.lower() == 'all':
+            # 导入所有批次 - 询问配置
+            print("\n配置导入选项:")
+            
+            # LLM分类
+            llm_input = input("启用LLM分类? [Y/n]: ")
+            enable_llm = llm_input.lower() != 'n'
+            
+            # 干运行模式
+            dry_run_input = input("干运行模式(不写入数据库)? [y/N]: ")
+            dry_run = dry_run_input.lower() == 'y'
+            
+            # 重复检查
+            check_dup = input("检查相似图片? [Y/n]: ")
+            check_duplicates = check_dup.lower() != 'n'
+            
+            threshold = 1
+            interactive_mode = False
+            
+            if check_duplicates:
+                threshold_input = input("相似度阈值 [1]: ")
+                if threshold_input.strip():
+                    try:
+                        threshold = int(threshold_input)
+                    except ValueError:
+                        threshold = 1
+                
+                interactive_input = input("发现相似时询问? [y/N]: ")
+                interactive_mode = interactive_input.lower() == 'y'
+            
             # 导入所有批次
             print("\n开始导入所有批次...")
             for batch in batches:
                 print(f"\n{'=' * 70}")
                 print(f"导入批次: {batch['name']}")
                 print(f"{'=' * 70}")
-                import_batch(batch['name'])
+                import_batch(batch['name'], check_duplicates, threshold, interactive_mode, enable_llm, dry_run)
             return
         
         # 导入单个批次
@@ -409,16 +683,25 @@ def interactive_import():
         if 0 <= index < len(batches):
             selected = batches[index]['name']
             
+            # 询问LLM分类
+            llm_input = input(f"\n启用LLM分类? [Y/n]: ")
+            enable_llm = llm_input.lower() != 'n'
+            
+            # 询问干运行模式
+            dry_run_input = input("干运行模式(不写入数据库)? [y/N]: ")
+            dry_run = dry_run_input.lower() == 'y'
+            
             # 询问是否预览
-            preview = input(f"\n是否预览 '{selected}'? [y/N]: ")
+            preview = input(f"是否预览 '{selected}'? [y/N]: ")
             if preview.lower() == 'y':
-                preview_import(selected)
+                preview_import(selected, enable_llm)
                 
                 # 预览后询问是否继续导入
-                confirm = input("\n是否继续导入? [y/N]: ")
-                if confirm.lower() != 'y':
-                    print("已取消")
-                    return
+                if not dry_run:
+                    confirm = input("\n是否继续导入? [y/N]: ")
+                    if confirm.lower() != 'y':
+                        print("已取消")
+                        return
             
             # 询问是否检查重复
             check_dup = input("\n是否检查相似图片? [Y/n]: ")
@@ -439,7 +722,7 @@ def interactive_import():
                 interactive_input = input("发现相似时询问? [y/N]: ")
                 interactive_mode = interactive_input.lower() == 'y'
             
-            import_batch(selected, check_duplicates, threshold, interactive_mode)
+            import_batch(selected, check_duplicates, threshold, interactive_mode, enable_llm, dry_run)
         else:
             print("无效的选择")
     
@@ -449,7 +732,7 @@ def interactive_import():
         print("\n\n已取消")
 
 
-def import_all_batches(check_duplicates=True, threshold=1, interactive=False):
+def import_all_batches(check_duplicates=True, threshold=1, interactive=False, enable_llm=True, dry_run=False):
     """导入所有批次"""
     batches = list_available_batches()
     
@@ -463,14 +746,18 @@ def import_all_batches(check_duplicates=True, threshold=1, interactive=False):
     for i, batch in enumerate(batches, 1):
         print(f"\n[{i}/{len(batches)}] 导入批次: {batch['name']}")
         print("=" * 70)
-        import_batch(batch['name'], check_duplicates, threshold, interactive)
+        import_batch(batch['name'], check_duplicates, threshold, interactive, enable_llm, dry_run)
 
 
 def main():
+    global ENABLE_LLM_CLASSIFICATION, DRY_RUN_MODE
+    
     # 解析参数
     check_duplicates = True
     threshold = 1  # 默认阈值改为1
     interactive = False  # 默认非交互模式（自动跳过）
+    enable_llm = ENABLE_LLM_CLASSIFICATION
+    dry_run = DRY_RUN_MODE
     
     # 检查是否有 --no-check 参数
     if '--no-check' in sys.argv:
@@ -481,6 +768,16 @@ def main():
     if '--interactive' in sys.argv:
         interactive = True
         sys.argv.remove('--interactive')
+    
+    # 检查是否有 --no-llm 参数
+    if '--no-llm' in sys.argv:
+        enable_llm = False
+        sys.argv.remove('--no-llm')
+    
+    # 检查是否有 --dry-run 参数
+    if '--dry-run' in sys.argv:
+        dry_run = True
+        sys.argv.remove('--dry-run')
     
     # 检查是否有 --threshold 参数
     if '--threshold' in sys.argv:
@@ -500,7 +797,7 @@ def main():
     
     if sys.argv[1] == '--all':
         # 导入所有批次
-        import_all_batches(check_duplicates, threshold, interactive)
+        import_all_batches(check_duplicates, threshold, interactive, enable_llm, dry_run)
         return
     
     if sys.argv[1] == '--help' or sys.argv[1] == '-h':
@@ -509,6 +806,8 @@ def main():
         print("\n选项:")
         print("  --all                        导入所有批次")
         print("  --no-check                   跳过相似度检查")
+        print("  --no-llm                     禁用LLM分类 (默认启用)")
+        print("  --dry-run                    干运行模式：不写入数据库")
         print("  --threshold <n>              设置相似度阈值 (默认: 1)")
         print("  --interactive                发现相似时询问用户 (默认自动跳过)")
         print("  --help, -h                   显示帮助信息")
@@ -516,14 +815,21 @@ def main():
         print("  python import.py <directory_name>")
         print("  python import.py <directory_name> --preview")
         print("  python import.py <directory_name> --no-check")
+        print("  python import.py <directory_name> --no-llm")
+        print("  python import.py <directory_name> --dry-run")
         print("  python import.py <directory_name> --threshold 5")
         print("  python import.py <directory_name> --interactive")
         print("\n示例:")
         print("  python import.py                              # 交互式选择")
-        print("  python import.py --all                        # 导入所有，自动跳过重复")
+        print("  python import.py --all                        # 导入所有，启用LLM分类")
+        print("  python import.py --all --no-llm               # 导入所有，禁用LLM分类")
+        print("  python import.py --all --dry-run              # 导入所有，干运行模式")
         print("  python import.py --all --interactive          # 导入所有，询问用户")
         print("  python import.py --all --no-check             # 导入所有，不检查重复")
         print("  python import.py artist_name_20241206_143022  # 导入指定批次")
+        print("\nLLM配置:")
+        print(f"  LMstudio地址: {LM_STUDIO_BASE_URL}")
+        print(f"  模型名称: {LM_STUDIO_MODEL}")
         return
     
     # 指定批次名
@@ -531,9 +837,9 @@ def main():
     preview_mode = len(sys.argv) > 2 and sys.argv[2] == '--preview'
     
     if preview_mode:
-        preview_import(directory)
+        preview_import(directory, enable_llm)
     else:
-        import_batch(directory, check_duplicates, threshold, interactive)
+        import_batch(directory, check_duplicates, threshold, interactive, enable_llm, dry_run)
 
 
 if __name__ == "__main__":

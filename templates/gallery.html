@@ -267,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 标记 JavaScript 已启用
     galleryGrid.classList.add('js-enabled');
     
-    // 为单个卡片应用超椭圆的函数（提到外层作用域）
+    // 为单个卡片应用超椭圆的函数
     function applySquircleToCard(card, index) {
         const rect = card.getBoundingClientRect();
         const width = Math.round(rect.width);
@@ -276,7 +276,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 只有当卡片有实际尺寸时才应用
         if (width === 0 || height === 0) {
-            console.log(`⚠️ 卡片 ${index} 尺寸为 0，跳过`);
             return;
         }
         
@@ -309,25 +308,19 @@ document.addEventListener('DOMContentLoaded', function() {
         card.setAttribute('data-squircle', 'applied');
         card.setAttribute('data-squircle-id', clipId);
         card.setAttribute('data-squircle-size', `${width}x${height}`);
-        
-        console.log(`✅ 卡片 ${index} 超椭圆已更新: ${width}x${height}`);
     }
     
     // 为所有卡片应用超椭圆
     function applySquircleClipPaths() {
         const cards = document.querySelectorAll('.card');
-        
         cards.forEach((card, index) => {
             applySquircleToCard(card, index);
         });
-        
-        console.log(`✅ 初始超椭圆应用到 ${cards.length} 个卡片`);
     }
     
-    // 设置图片加载监听器和评分事件的函数（在卡片分配后调用）
+    // 设置图片加载监听器和评分事件的函数
     function setupImageLoadListeners() {
         const allImages = document.querySelectorAll('.card img');
-        console.log(`🖼️ 找到 ${allImages.length} 张图片，开始监听加载`);
         
         // 为所有评分表单设置事件处理器
         const ratingForms = document.querySelectorAll('.rating-form form');
@@ -339,10 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         allImages.forEach((img, imgIndex) => {
             const card = img.closest('.card');
-            if (!card) {
-                console.log(`⚠️ 图片 ${imgIndex} 没有找到父卡片`);
-                return;
-            }
+            if (!card) return;
             
             // 获取卡片在所有卡片中的索引
             const allCards = Array.from(document.querySelectorAll('.card'));
@@ -350,34 +340,24 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 图片加载完成后重新应用超椭圆
             const reapplySquircle = () => {
-                console.log(`🔄 图片 ${imgIndex} (卡片 ${cardIndex}) 加载完成，重新应用超椭圆`);
-                // 等待一小段时间，确保布局已更新
                 setTimeout(() => {
                     applySquircleToCard(card, cardIndex);
                 }, 100);
             };
             
             if (img.complete && img.naturalHeight !== 0) {
-                // 图片已经加载完成
-                console.log(`✓ 图片 ${imgIndex} 已加载完成`);
                 reapplySquircle();
             } else {
-                // 监听图片加载
-                console.log(`⏳ 图片 ${imgIndex} 等待加载...`);
-                img.addEventListener('load', () => {
-                    console.log(`📥 图片 ${imgIndex} load 事件触发`);
-                    reapplySquircle();
-                });
-                img.addEventListener('error', () => {
-                    console.log(`❌ 图片 ${imgIndex} 加载失败`);
-                    reapplySquircle();
-                });
+                img.addEventListener('load', reapplySquircle);
+                img.addEventListener('error', reapplySquircle);
             }
         });
     }
     
     // 获取原始排序的卡片数据（按数据库排序）
-    const originalArtworks = {{ artworks | map(attribute='id') | list | tojson | safe }};
+    const originalArtworks = [
+        {% for art in artworks %}{{ art.id }}{% if not loop.last %},{% endif %}{% endfor %}
+    ];
     
     // 获取宽高比数据
     const aspectRatios = {{ aspect_ratios | tojson | safe }};
@@ -444,7 +424,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // 重新分配完成后，设置图片加载监听和超椭圆
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-                console.log('🖼️ 响应式重排完成，重新设置监听器...');
                 setupImageLoadListeners();
                 setTimeout(() => {
                     applySquircleClipPaths();
@@ -478,12 +457,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 只有当列数真正改变时才重排
         if (newColumnCount !== currentColumnCount) {
-            console.log(`📐 列数改变: ${currentColumnCount} → ${newColumnCount}，重新布局...`);
             currentColumnCount = newColumnCount;
             redistributeCardsWithSorting();
         } else {
             // 列数没变，只需要更新clip path以适应新尺寸
-            console.log('📐 窗口大小改变但列数未变，更新clip paths...');
             updateClipPathsForResize();
         }
     }
@@ -510,7 +487,7 @@ document.addEventListener('DOMContentLoaded', function() {
             handleResize();
             galleryGrid.classList.remove('resizing');
             isResizing = false;
-        }, 150); // 减少防抖延迟，提高响应性
+        }, 150); // 防抖延迟
     });
     
 
