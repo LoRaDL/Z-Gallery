@@ -507,6 +507,11 @@ main {
     color: var(--font-color);
     border-bottom: 2px solid var(--link-color);
     padding-bottom: 0.5rem;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    line-height: 1.3;
 }
 
 /* 标题编辑模式下的样式 */
@@ -522,6 +527,10 @@ main {
     width: 100%;
     box-sizing: border-box;
     font-family: inherit;
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.3;
 }
 
 /* 信息区域样式 */

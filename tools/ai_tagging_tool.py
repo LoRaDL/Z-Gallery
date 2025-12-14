@@ -39,7 +39,7 @@ DB_PATH = "zootopia_gallery.db"
 BATCH_SIZE = 10
 
 # 开关：是否纳入之前被标记为blocked的项目到重新打标
-INCLUDE_BLOCKED = True
+INCLUDE_BLOCKED = False
 
 # 分类功能开关（默认值，可通过命令行参数覆盖）
 ENABLE_CLASSIFICATION = True  # 是否启用分类功能

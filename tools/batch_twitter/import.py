@@ -37,14 +37,14 @@ SYSTEM_PROMPT = """You are an expert in analyzing and tagging artworks.
 You will receive a single fanart image (may from the movie *Zootopia*).
 Your task is to analyze the image and output structured information.
 
-First, provide a brief analysis of what you see in the image, then give your classifications.
+First, provide a brief analysis, then give your classifications.
 
 Output format:
 Analysis: [...]
 
 Category: [choose ONE]
 - fanart: Artwork, illustrations, drawings (including both single images and comics)
-- real_photo: Real photographs, cosplay photos, physical merchandise photos
+- real_photo: Real photographs, cosplay photos, physical merchandise photos, movie frames
 - other: Screenshots, memes, text-heavy images, UI elements, non-art content
 
 Classification: [choose ONE]
