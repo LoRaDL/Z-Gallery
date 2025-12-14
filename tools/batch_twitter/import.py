@@ -37,11 +37,6 @@ SYSTEM_PROMPT = """You are an expert in analyzing and tagging artworks.
 You will receive a single fanart image (may from the movie *Zootopia*).
 Your task is to analyze the image and output structured information.
 
-First, provide a brief analysis, then give your classifications.
-
-Output format:
-Analysis: [...]
-
 Category: [choose ONE]
 - fanart: Artwork, illustrations, drawings (including both single images and comics)
 - real_photo: Real photographs, cosplay photos, physical merchandise photos, movie frames
@@ -53,7 +48,6 @@ Classification: [choose ONE]
 - nsfw: Explicit content. Full nudity with genitalia visible, sexual acts depicted, explicit sexual situations
 
 Example output:
-Analysis: This is a digital artwork showing two anthropomorphic characters in casual clothing having a friendly conversation in a park setting. The art style is cartoon-like with bright colors and clean lines.
 Category: fanart
 Classification: sfw"""
 
@@ -615,7 +609,7 @@ def list_available_batches():
                     'path': dir_path
                 })
     
-    return sorted(batches, key=lambda x: x['name'], reverse=True)
+    return sorted(batches, key=lambda x: x['name'], reverse=False)
 
 
 def interactive_import():
@@ -633,68 +627,75 @@ def interactive_import():
     print("=" * 70)
     
     try:
-        choice = input("\n请选择要导入的批次 [1-{}] (输入 'all' 导入全部, 'q' 退出): ".format(len(batches)))
+        choice = input("\n请选择要导入的批次 [1-{}] (多选用逗号分隔如'1,3,5', 'all'导入全部, 'q'退出): ".format(len(batches)))
         
         if choice.lower() == 'q':
             print("已取消")
             return
         
+        # 解析选择
+        selected_batches = []
+        
         if choice.lower() == 'all':
-            # 导入所有批次 - 询问配置
-            print("\n配置导入选项:")
-            
-            # LLM分类
-            llm_input = input("启用LLM分类? [Y/n]: ")
-            enable_llm = llm_input.lower() != 'n'
-            
-            # 干运行模式
-            dry_run_input = input("干运行模式(不写入数据库)? [y/N]: ")
-            dry_run = dry_run_input.lower() == 'y'
-            
-            # 重复检查
-            check_dup = input("检查相似图片? [Y/n]: ")
-            check_duplicates = check_dup.lower() != 'n'
-            
-            threshold = 1
-            interactive_mode = False
-            
-            if check_duplicates:
-                threshold_input = input("相似度阈值 [1]: ")
-                if threshold_input.strip():
-                    try:
-                        threshold = int(threshold_input)
-                    except ValueError:
-                        threshold = 1
+            selected_batches = batches
+        else:
+            # 解析多选输入
+            try:
+                # 分割并解析数字
+                choices = [c.strip() for c in choice.split(',')]
+                for c in choices:
+                    if '-' in c:
+                        # 支持范围选择，如 "1-5"
+                        start, end = map(int, c.split('-'))
+                        for i in range(start, end + 1):
+                            if 1 <= i <= len(batches):
+                                selected_batches.append(batches[i - 1])
+                    else:
+                        # 单个选择
+                        index = int(c) - 1
+                        if 0 <= index < len(batches):
+                            selected_batches.append(batches[index])
+                        else:
+                            print(f"警告: 忽略无效选择 {c}")
                 
-                interactive_input = input("发现相似时询问? [y/N]: ")
-                interactive_mode = interactive_input.lower() == 'y'
-            
-            # 导入所有批次
-            print("\n开始导入所有批次...")
-            for batch in batches:
-                print(f"\n{'=' * 70}")
-                print(f"导入批次: {batch['name']}")
-                print(f"{'=' * 70}")
-                import_batch(batch['name'], check_duplicates, threshold, interactive_mode, enable_llm, dry_run)
+                # 去重（保持顺序）
+                seen = set()
+                unique_batches = []
+                for batch in selected_batches:
+                    if batch['name'] not in seen:
+                        seen.add(batch['name'])
+                        unique_batches.append(batch)
+                selected_batches = unique_batches
+                
+            except ValueError:
+                print("无效的输入格式")
+                return
+        
+        if not selected_batches:
+            print("没有选择任何有效的批次")
             return
         
-        # 导入单个批次
-        index = int(choice) - 1
-        if 0 <= index < len(batches):
-            selected = batches[index]['name']
-            
-            # 询问LLM分类
-            llm_input = input(f"\n启用LLM分类? [Y/n]: ")
-            enable_llm = llm_input.lower() != 'n'
-            
-            # 询问干运行模式
-            dry_run_input = input("干运行模式(不写入数据库)? [y/N]: ")
-            dry_run = dry_run_input.lower() == 'y'
-            
-            # 询问是否预览
-            preview = input(f"是否预览 '{selected}'? [y/N]: ")
+        # 显示选择的批次
+        print(f"\n已选择 {len(selected_batches)} 个批次:")
+        for i, batch in enumerate(selected_batches, 1):
+            print(f"  {i}. {batch['name']} ({batch['count']} 张图片)")
+        
+        # 询问配置选项
+        print("\n配置导入选项:")
+        
+        # LLM分类
+        llm_input = input("启用LLM分类? [Y/n]: ")
+        enable_llm = llm_input.lower() != 'n'
+        
+        # 干运行模式
+        dry_run_input = input("干运行模式(不写入数据库)? [y/N]: ")
+        dry_run = dry_run_input.lower() == 'y'
+        
+        # 预览选项（仅对单个批次有效）
+        if len(selected_batches) == 1:
+            preview = input(f"是否预览 '{selected_batches[0]['name']}'? [y/N]: ")
             if preview.lower() == 'y':
-                preview_import(selected, enable_llm)
+                preview_import(selected_batches[0]['name'], enable_llm)
                 
                 # 预览后询问是否继续导入
                 if not dry_run:
@@ -702,29 +703,32 @@ def interactive_import():
                     if confirm.lower() != 'y':
                         print("已取消")
                         return
+        
+        # 重复检查
+        check_dup = input("检查相似图片? [Y/n]: ")
+        check_duplicates = check_dup.lower() != 'n'
+        
+        threshold = 1
+        interactive_mode = False
+        
+        if check_duplicates:
+            threshold_input = input("相似度阈值 [1]: ")
+            if threshold_input.strip():
+                try:
+                    threshold = int(threshold_input)
+                except ValueError:
+                    threshold = 1
             
-            # 询问是否检查重复
-            check_dup = input("\n是否检查相似图片? [Y/n]: ")
-            check_duplicates = check_dup.lower() != 'n'
-            
-            threshold = 1
-            interactive_mode = False
-            
-            if check_duplicates:
-                threshold_input = input("相似度阈值 [1]: ")
-                if threshold_input.strip():
-                    try:
-                        threshold = int(threshold_input)
-                    except ValueError:
-                        threshold = 1
-                
-                # 询问是否交互模式
-                interactive_input = input("发现相似时询问? [y/N]: ")
-                interactive_mode = interactive_input.lower() == 'y'
-            
-            import_batch(selected, check_duplicates, threshold, interactive_mode, enable_llm, dry_run)
-        else:
-            print("无效的选择")
+            interactive_input = input("发现相似时询问? [y/N]: ")
+            interactive_mode = interactive_input.lower() == 'y'
+        
+        # 开始导入选择的批次
+        print(f"\n开始导入 {len(selected_batches)} 个批次...")
+        for i, batch in enumerate(selected_batches, 1):
+            print(f"\n{'=' * 70}")
+            print(f"[{i}/{len(selected_batches)}] 导入批次: {batch['name']}")
+            print(f"{'=' * 70}")
+            import_batch(batch['name'], check_duplicates, threshold, interactive_mode, enable_llm, dry_run)
     
     except ValueError:
         print("无效的输入")
@@ -802,7 +806,7 @@ def main():
     
     if sys.argv[1] == '--help' or sys.argv[1] == '-h':
         print("用法: python import.py [选项] [directory_name]")
-        print("\n无参数运行：交互式选择批次")
+        print("\n无参数运行：交互式选择批次（支持多选）")
         print("\n选项:")
         print("  --all                        导入所有批次")
         print("  --no-check                   跳过相似度检查")
@@ -819,8 +823,14 @@ def main():
         print("  python import.py <directory_name> --dry-run")
         print("  python import.py <directory_name> --threshold 5")
         print("  python import.py <directory_name> --interactive")
+        print("\n交互式多选示例:")
+        print("  输入 '1'           # 选择第1个批次")
+        print("  输入 '1,3,5'       # 选择第1、3、5个批次")
+        print("  输入 '1-5'         # 选择第1到5个批次")
+        print("  输入 '1,3-5,7'     # 选择第1、3到5、7个批次")
+        print("  输入 'all'         # 选择所有批次")
         print("\n示例:")
-        print("  python import.py                              # 交互式选择")
+        print("  python import.py                              # 交互式选择（支持多选）")
         print("  python import.py --all                        # 导入所有，启用LLM分类")
         print("  python import.py --all --no-llm               # 导入所有，禁用LLM分类")
         print("  python import.py --all --dry-run              # 导入所有，干运行模式")
