@@ -1,52 +1,120 @@
 {% extends "layout.html" %}
 {% block content %}
+
+<style>
+/* 响应式缩放和平滑过渡 */
+.gallery-grid {
+    transition: opacity 0.2s ease-out;
+}
+
+.card {
+    transition: transform 0.2s ease-out, clip-path 0.2s ease-out;
+}
+
+/* 在窗口调整大小时减少视觉闪烁 */
+.gallery-grid.resizing {
+    pointer-events: none;
+}
+
+.gallery-grid.resizing .card {
+    transition: none; /* 调整大小时禁用过渡以避免卡顿 */
+}
+</style>
+
+<!-- SVG 容器：用于存放动态生成的超椭圆 clip-path -->
+<svg width="0" height="0" style="position: absolute;" id="squircle-defs">
+    <defs id="squircle-clips">
+        <!-- 超椭圆 clip-path 会通过 JavaScript 动态生成 -->
+    </defs>
+</svg>
+
 <div class="controls-container">
-    <!-- Search and filters for comics -->
+    <!-- Comics Label -->
     <span class="filter-label">Comics</span>
     <span class="separator">|</span>
+    
+    <!-- Sort Group -->
     <span class="filter-label">Sort:</span>
     <a href="{{ url_for('comics', sort='newest') }}" class="{{ 'active' if request.args.get('sort') == 'newest' }}">Newest</a>
     <a href="{{ url_for('comics', sort='oldest') }}" class="{{ 'active' if request.args.get('sort') == 'oldest' }}">Oldest</a>
     <a href="{{ url_for('comics', sort='title') }}" class="{{ 'active' if request.args.get('sort') == 'title' }}">Title</a>
 </div>
 
+<!-- Total Comics Count -->
+<div class="total-count">
+    <span>Total Comics: {{ comics|length }}</span>
+</div>
+
 <div class="gallery-grid">
-    {% for comic in comics %}
-        <div class="card" id="comic-{{ comic.id }}">
-            <a href="{{ url_for('comic_reader', comic_id=comic.id) }}#page-top" class="card-image-link">
-                {% if config.ENABLE_FULL_RES_CARD_IMAGES and comic.first_page_path %}
-                    <img src="{{ url_for('comic_page', file_path=comic.first_page_path.replace('zootopia_comics/', '')) }}" alt="{{ comic.title }}" loading="lazy">
-                {% elif comic.thumbnail_filename %}
-                    <img src="{{ url_for('comics_thumbnail', filename=comic.thumbnail_filename) }}" alt="{{ comic.title }}" loading="lazy">
-                {% else %}
-                    <img src="{{ url_for('static', filename='default_comic.jpg') }}" alt="{{ comic.title }}" loading="lazy">
+    {% for col in range(columns) %}
+        <div class="masonry-column">
+            {% for comic in comics %}
+                {% if comic_columns[loop.index0] == col %}
+                    <div class="card" id="comic-{{ comic.id }}">
+                        <a href="{{ url_for('comic_reader', comic_id=comic.id) }}#page-top" class="card-image-link">
+                            {% if config.ENABLE_FULL_RES_CARD_IMAGES and comic.first_page_path %}
+                                <img src="{{ url_for('comic_page', file_path=comic.first_page_path.replace('zootopia_comics/', '')) }}" 
+                                     alt="{{ comic.title }}" 
+                                     loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
+                                     {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
+                                     decoding="async">
+                            {% elif comic.thumbnail_filename %}
+                                <img src="{{ url_for('comics_thumbnail', filename=comic.thumbnail_filename) }}" 
+                                     alt="{{ comic.title }}" 
+                                     loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
+                                     {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
+                                     decoding="async">
+                            {% else %}
+                                <img src="{{ url_for('static', filename='default_comic.jpg') }}" 
+                                     alt="{{ comic.title }}" 
+                                     loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
+                                     {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
+                                     decoding="async">
+                            {% endif %}
+                        </a>
+                        <div class="card-info">
+                            <p class="artist">
+                                <a href="{{ url_for('gallery', artist=comic.artist) }}">{{ comic.artist or 'Unknown' }}</a>
+                            </p>
+                            <p class="title">
+                                <a href="{{ url_for('comic_reader', comic_id=comic.id) }}#page-top">{{ comic.title }}</a>
+                            </p>
+                            <p class="pages">{{ comic.page_count }} pages</p>
+                            {% if comic.rating %}
+                            <div class="rating-form">
+                                <form action="{{ url_for('rate_comic', comic_id=comic.id) }}" method="post">
+                                    {% for i in range(1, 11) %}
+                                        <button type="submit" name="rating" value="{{ i }}" class="{{ 'rated' if comic.rating and i <= comic.rating }}">
+                                            {% if comic.rating and i <= comic.rating %}★{% else %}☆{% endif %}
+                                        </button>
+                                    {% endfor %}
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
                 {% endif %}
-            </a>
-            <div class="card-info">
-                <p class="artist">{{ comic.artist or 'Unknown' }}</p>
-                <p class="title">
-                    <a href="{{ url_for('comic_reader', comic_id=comic.id) }}#page-top">{{ comic.title }}</a>
-                </p>
-                <p class="pages">{{ comic.page_count }} pages</p>
-                {% if comic.rating %}
-                <div class="rating-display">
-                    {% for i in range(1, 11) %}
-                        {% if i <= comic.rating %}★{% else %}☆{% endif %}
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
+            {% endfor %}
         </div>
-    {% else %}
-        <p>No comics found.</p>
     {% endfor %}
 </div>
 
-<div class="pagination">
-    {% if page > 1 %}
-        <a href="{{ url_for('comics', **generate_url_params('page', page - 1)) }}">« Prev</a>
-    {% endif %}
+{% if not comics %}
+    <p>No comics found.</p>
+{% endif %}
 
+<div class="pagination">
+    <!-- Prev/Next 按钮行 -->
+    <div class="pagination-nav">
+        {% if page > 1 %}
+            <a href="{{ url_for('comics', **generate_url_params('page', page - 1)) }}">« Prev</a>
+        {% endif %}
+        {% if page < total_pages %}
+            <a href="{{ url_for('comics', **generate_url_params('page', page + 1)) }}">Next »</a>
+        {% endif %}
+    </div>
+    
+    <!-- Page 表单行 -->
     <form action="{{ url_for('comics') }}" method="get" class="page-jump-form">
         <span>Page</span>
         <input type="number" name="page" value="{{ page }}" min="1" max="{{ total_pages }}">
@@ -58,9 +126,306 @@
             {% endif %}
         {% endfor %}
     </form>
-
-    {% if page < total_pages %}
-        <a href="{{ url_for('comics', **generate_url_params('page', page + 1)) }}">» Next »</a>
-    {% endif %}
 </div>
+
+<script>
+//超椭圆
+function generateSquirclePath(width, height, radius) {
+    // 固定半径，避免长方形变形
+    const r = Math.min(radius, width / 2, height / 2);
+    const n = 5; // Apple 使用的超椭圆指数
+    const steps = 30; // 增加点数以提高平滑度
+    
+    // 计算超椭圆四分之一圆的点
+    function superellipseQuarter() {
+        const points = [];
+        for (let i = 0; i <= steps; i++) {
+            const angle = (i / steps) * (Math.PI / 2);
+            // 超椭圆公式：|x|^n + |y|^n = r^n
+            // 参数化形式：x = r * cos(t)^(2/n), y = r * sin(t)^(2/n)
+            const px = r * Math.pow(Math.cos(angle), 2/n);
+            const py = r * Math.pow(Math.sin(angle), 2/n);
+            points.push([px, py]);
+        }
+        return points;
+    }
+    
+    const corner = superellipseQuarter();
+    let path = '';
+    
+    // 从左上角圆弧的起点开始 (r, 0)，顺时针绘制
+    path += `M ${r},0`;
+    
+    // 顶部直线到右上角
+    path += ` L ${width - r},0`;
+    
+    // 右上角超椭圆：从 (width-r, 0) 到 (width, r)
+    for (let i = corner.length - 1; i >= 0; i--) {
+        const [px, py] = corner[i];
+        path += ` L ${width - r + px},${r - py}`;
+    }
+    
+    // 右侧直线到右下角
+    path += ` L ${width},${height - r}`;
+    
+    // 右下角超椭圆：从 (width, height-r) 到 (width-r, height)
+    for (let i = corner.length - 1; i >= 0; i--) {
+        const [px, py] = corner[i];
+        path += ` L ${width - r + py},${height - r + px}`;
+    }
+    
+    // 底部直线到左下角
+    path += ` L ${r},${height}`;
+    
+    // 左下角超椭圆：从 (r, height) 到 (0, height-r)
+    for (let i = corner.length - 1; i >= 0; i--) {
+        const [px, py] = corner[i];
+        path += ` L ${r - px},${height - r + py}`;
+    }
+    
+    // 左侧直线到左上角
+    path += ` L 0,${r}`;
+    
+    // 左上角超椭圆：从 (0, r) 到 (r, 0)
+    // corner 是从 (r, 0) 到 (0, r)
+    // 变换公式：(px, py) -> (r-py, r-px)
+    for (let i = corner.length - 1; i >= 0; i--) {
+        const [px, py] = corner[i];
+        path += ` L ${r - py},${r - px}`;
+    }
+    
+    // 闭合路径
+    path += ' Z';
+    return path;
+}
+
+// 响应式瀑布流：页面加载时根据屏幕宽度分配卡片（仅执行一次）
+document.addEventListener('DOMContentLoaded', function() {
+    const galleryGrid = document.querySelector('.gallery-grid');
+    if (!galleryGrid) return;
+    
+    // 标记 JavaScript 已启用
+    galleryGrid.classList.add('js-enabled');
+    
+    // 为单个卡片应用超椭圆的函数
+    function applySquircleToCard(card, index) {
+        const rect = card.getBoundingClientRect();
+        const width = Math.round(rect.width);
+        const height = Math.round(rect.height);
+        const radius = 80;
+        
+        // 只有当卡片有实际尺寸时才应用
+        if (width === 0 || height === 0) {
+            return;
+        }
+        
+        const svgDefs = document.getElementById('squircle-clips');
+        const clipId = `squircle-${index}`;
+        
+        // 如果已存在，先移除旧的
+        const existingClip = document.getElementById(clipId);
+        if (existingClip) {
+            existingClip.remove();
+        }
+        
+        // 创建新的 clipPath
+        const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+        clipPath.setAttribute('id', clipId);
+        clipPath.setAttribute('clipPathUnits', 'userSpaceOnUse');
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', generateSquirclePath(width, height, radius));
+        
+        clipPath.appendChild(path);
+        svgDefs.appendChild(clipPath);
+        
+        // 应用 clip-path
+        const clipPathUrl = `url(#${clipId})`;
+        card.style.clipPath = clipPathUrl;
+        card.style.webkitClipPath = clipPathUrl;
+        
+        // 标记已应用
+        card.setAttribute('data-squircle', 'applied');
+        card.setAttribute('data-squircle-id', clipId);
+        card.setAttribute('data-squircle-size', `${width}x${height}`);
+    }
+    
+    // 为所有卡片应用超椭圆
+    function applySquircleClipPaths() {
+        const cards = document.querySelectorAll('.card');
+        cards.forEach((card, index) => {
+            applySquircleToCard(card, index);
+        });
+    }
+    
+    // 设置图片加载监听器和评分事件的函数
+    function setupImageLoadListeners() {
+        const allImages = document.querySelectorAll('.card img');
+        
+        // 为所有评分表单设置事件处理器
+        const ratingForms = document.querySelectorAll('.rating-form form');
+        ratingForms.forEach(form => {
+            if (window.setupRatingHandler) {
+                window.setupRatingHandler(form);
+            }
+        });
+        
+        allImages.forEach((img, imgIndex) => {
+            const card = img.closest('.card');
+            if (!card) return;
+            
+            // 获取卡片在所有卡片中的索引
+            const allCards = Array.from(document.querySelectorAll('.card'));
+            const cardIndex = allCards.indexOf(card);
+            
+            // 图片加载完成后重新应用超椭圆
+            const reapplySquircle = () => {
+                setTimeout(() => {
+                    applySquircleToCard(card, cardIndex);
+                }, 100);
+            };
+            
+            if (img.complete && img.naturalHeight !== 0) {
+                reapplySquircle();
+            } else {
+                img.addEventListener('load', reapplySquircle);
+                img.addEventListener('error', reapplySquircle);
+            }
+        });
+    }
+    
+    // 获取原始排序的漫画数据
+    const originalComics = [
+        {% for comic in comics %}{{ comic.id }}{% if not loop.last %},{% endif %}{% endfor %}
+    ];
+    
+    // 当前列数状态
+    let currentColumnCount = getColumnCount();
+    
+    // 根据屏幕宽度确定列数
+    function getColumnCount() {
+        const width = window.innerWidth;
+        if (width <= 600) return 1;
+        else if (width <= 900) return 2;
+        else if (width <= 1200) return 3;
+        else return 4;
+    }
+    
+    // 初始化：保存原始DOM元素
+    const originalElements = new Map();
+    function initializeComicElements() {
+        originalComics.forEach(comicId => {
+            const element = document.getElementById(`comic-${comicId}`);
+            if (element) {
+                originalElements.set(comicId, element.cloneNode(true));
+            }
+        });
+    }
+    
+    // 保持排序的响应式重排函数
+    function redistributeCardsWithSorting() {
+        const columnCount = getColumnCount();
+        const columns = galleryGrid.querySelectorAll('.masonry-column');
+        
+        // 清空所有列
+        columns.forEach(col => col.innerHTML = '');
+        
+        // 显示/隐藏列
+        columns.forEach((col, index) => {
+            col.style.display = index < columnCount ? 'flex' : 'none';
+        });
+        
+        // 初始化列高度（漫画通常比较高，使用固定估算）
+        const columnHeights = new Array(columnCount).fill(0);
+        
+        // 按原始排序重新分配卡片
+        originalComics.forEach(comicId => {
+            const originalElement = originalElements.get(comicId);
+            if (!originalElement) return;
+            
+            // 漫画卡片高度估算（通常比普通图片高）
+            const cardHeight = 1.5; // 漫画卡片的估算高度
+            
+            // 找到最短的列
+            const minColIndex = columnHeights.indexOf(Math.min(...columnHeights));
+            
+            // 将卡片添加到该列（使用克隆的元素）
+            const cardClone = originalElement.cloneNode(true);
+            columns[minColIndex].appendChild(cardClone);
+            
+            // 更新列高度
+            columnHeights[minColIndex] += cardHeight;
+        });
+        
+        // 重新分配完成后，设置图片加载监听和超椭圆
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                setupImageLoadListeners();
+                setTimeout(() => {
+                    applySquircleClipPaths();
+                }, 100);
+            });
+        });
+    }
+    
+    // 初始化
+    initializeComicElements();
+    
+    // 初始分配（如果需要）
+    const initialColumnCount = getColumnCount();
+    if (initialColumnCount !== 4) {
+        // 如果当前屏幕需要的列数不是4列，重新分配
+        redistributeCardsWithSorting();
+    } else {
+        // 否则直接设置监听器
+        setupImageLoadListeners();
+        setTimeout(() => {
+            applySquircleClipPaths();
+        }, 100);
+    }
+    
+    // 智能窗口大小变化处理
+    let resizeTimer;
+    let isResizing = false;
+    
+    function handleResize() {
+        const newColumnCount = getColumnCount();
+        
+        // 只有当列数真正改变时才重排
+        if (newColumnCount !== currentColumnCount) {
+            currentColumnCount = newColumnCount;
+            redistributeCardsWithSorting();
+        } else {
+            // 列数没变，只需要更新clip path以适应新尺寸
+            updateClipPathsForResize();
+        }
+    }
+    
+    // 更新clip paths以适应窗口缩放
+    function updateClipPathsForResize() {
+        const cards = document.querySelectorAll('.card');
+        cards.forEach((card, index) => {
+            // 延迟一点让布局稳定
+            setTimeout(() => {
+                applySquircleToCard(card, index);
+            }, 50);
+        });
+    }
+    
+    window.addEventListener('resize', () => {
+        if (!isResizing) {
+            isResizing = true;
+            galleryGrid.classList.add('resizing');
+        }
+        
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            handleResize();
+            galleryGrid.classList.remove('resizing');
+            isResizing = false;
+        }, 150); // 防抖延迟
+    });
+});
+</script>
+
 {% endblock %}

@@ -832,6 +832,7 @@ header nav {
     margin-bottom: 1.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
+    padding-left: 20px; /* 在宽屏时添加左边距 */
 }
 
 .controls-container > * {
@@ -853,6 +854,15 @@ header nav {
 }
 .active-filters {
     margin-bottom: 1.5rem;
+    padding-left: 20px; /* 在宽屏时添加左边距 */
+}
+
+/* Total count 样式 */
+.total-count {
+    margin-bottom: 1.5rem;
+    padding-left: 20px; /* 在宽屏时添加左边距 */
+    color: var(--font-color);
+    font-size: 0.9rem;
 }
 .filter-pill {
     display: inline-block;
@@ -916,6 +926,14 @@ header nav {
     .controls-container {
         flex-direction: row; /* 保持行布局以便筛选组可以分行 */
         padding-left: 1rem; /* 添加左侧内边距使文字离左边缘有一定空格 */
+    }
+    
+    .active-filters {
+        padding-left: 1rem; /* 小屏幕时使用较小的左边距 */
+    }
+    
+    .total-count {
+        padding-left: 1rem; /* 小屏幕时使用较小的左边距 */
     }
     
     .controls-container > .filter-label {

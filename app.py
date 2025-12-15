@@ -1030,10 +1030,20 @@ def comics():
         LIMIT ? OFFSET ?
     """, (IMAGES_PER_PAGE, offset)).fetchall()
 
+    # 瀑布流布局：计算列数和分配
+    columns = 4  # 默认4列，JavaScript会根据屏幕大小调整
+    comic_columns = []
+    
+    # 简单的列分配算法（轮询分配）
+    for i, comic in enumerate(comics_list):
+        comic_columns.append(i % columns)
+
     return render_template('comics.html',
                           comics=comics_list,
                           page=page,
                           total_pages=total_pages,
+                          columns=columns,
+                          comic_columns=comic_columns,
                           current_filters=request.args.to_dict())
 
 @app.route('/comic/<int:comic_id>')
