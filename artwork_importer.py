@@ -55,13 +55,48 @@ def add_artwork_to_database(
     
     try:
         # 检查重复
-        if check_duplicate and metadata.get('title'):
-            cursor.execute(
-                "SELECT id FROM artworks WHERE source_platform = ? AND artist = ? AND title = ?",
-                (metadata['platform'], metadata['artist'], metadata['title'])
-            )
-            if cursor.fetchone():
-                return (False, None, f"Duplicate: {metadata['title']}")
+        if check_duplicate:
+            # 如果标题为空，跳过重复检查，直接入库
+            if not metadata.get('title'):
+                pass  # 标题为空，不进行重复检查
+            else:
+                cursor.execute(
+                    "SELECT id, phash FROM artworks WHERE source_platform = ? AND artist = ? AND title = ?",
+                    (metadata['platform'], metadata['artist'], metadata['title'])
+                )
+                existing = cursor.fetchone()
+                if existing:
+                    existing_id, existing_phash = existing
+                    
+                    # 计算当前图片的phash
+                    current_phash = _calculate_phash(file_path)
+                    
+                    # 如果phash相同，说明是真正的重复
+                    if existing_phash and current_phash and existing_phash == current_phash:
+                        return (False, None, f"Duplicate: {metadata['title']}")
+                    
+                    # 如果phash不同，说明是不同的图片但标题相同，进行改名
+                    if current_phash != existing_phash:
+                        original_title = metadata['title']
+                        counter = 2
+                        
+                        # 寻找可用的标题
+                        while True:
+                            new_title = f"{original_title} ({counter})"
+                            cursor.execute(
+                                "SELECT id FROM artworks WHERE source_platform = ? AND artist = ? AND title = ?",
+                                (metadata['platform'], metadata['artist'], new_title)
+                            )
+                            if not cursor.fetchone():
+                                metadata['title'] = new_title
+                                print(f"  📝 标题重复但图片不同，重命名为: {new_title}")
+                                break
+                            counter += 1
+                            
+                            # 防止无限循环
+                            if counter > 100:
+                                metadata['title'] = f"{original_title} ({datetime.now().strftime('%Y%m%d_%H%M%S')})"
+                                break
         
         # 移动文件（如果需要）
         if move_file:

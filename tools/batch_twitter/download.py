@@ -141,12 +141,12 @@ def download(url, resume_dir=None, force_new=False, sleep_time=None):
     command = [
         'gallery-dl',
         '--write-metadata',
-        '-o cursor=DAADDAABCgABG69gdnjbkgAKAAIbrstycVuQdQAIAAIAAAACCAADAAAAAAgABAAAACYKAAUbuADFAUAnEAoABhu4AMUBOgyQAAA',
         '--directory', output_dir,
         '--download-archive', archive_file,
         '--filter', "extension in ('jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp')",
         '--config', config.GALLERY_DL_CONFIG_PATH,
-        url
+        '--abort', '9999',  # 允许大量错误而不中止下载
+        url,
     ]
     
     # 如果指定了延迟时间，添加到命令中（覆盖配置文件）
