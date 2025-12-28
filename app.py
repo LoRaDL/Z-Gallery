@@ -450,14 +450,25 @@ def artwork_detail(artwork_id):
     # 查询同系列的图片
     series_artworks = []
     if artwork['title']:
-        # 使用正则表达式匹配系列图片
-        title_pattern = re.sub(r'\s*\(\d+\)$', '', artwork['title'])
-        query = """
-        SELECT id, file_name, title FROM artworks 
-        WHERE title LIKE ? AND id != ?
-        ORDER BY title
-        """
-        series_artworks = db.execute(query, (f'{title_pattern}%', artwork_id)).fetchall()
+        # 检查当前标题是否包含序号格式 (1), (2) 等
+        if re.search(r'\s*\(\d+\)$', artwork['title']):
+            # 提取基础标题（去掉序号部分）
+            title_pattern = re.sub(r'\s*\(\d+\)$', '', artwork['title'])
+            
+            # 查找所有以相同基础标题开头的作品
+            query = """
+            SELECT id, file_name, title FROM artworks 
+            WHERE title LIKE ? AND id != ?
+            ORDER BY title
+            """
+            candidates = db.execute(query, (f'{title_pattern}%', artwork_id)).fetchall()
+            
+            # 在Python中过滤，只保留真正的系列作品（带序号的）
+            series_pattern = re.compile(f'^{re.escape(title_pattern)}\\s*\\(\\d+\\)$')
+            series_artworks = [
+                artwork for artwork in candidates 
+                if series_pattern.match(artwork['title'])
+            ]
     
     return render_template('artwork_detail.html', artwork=artwork, series_artworks=series_artworks, current_filters={})
 

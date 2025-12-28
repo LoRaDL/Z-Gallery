@@ -241,12 +241,17 @@ def preview_import(directory, enable_llm=True):
         print(f"错误: 目录不存在: {directory}")
         sys.exit(1)
     
-    # 扫描图片文件
-    image_files = [f for f in os.listdir(target_dir) 
+    # 扫描related子目录中的图片文件
+    related_dir = os.path.join(target_dir, 'related')
+    if not os.path.exists(related_dir):
+        print(f"错误: related子目录不存在: {related_dir}")
+        sys.exit(1)
+    
+    image_files = [f for f in os.listdir(related_dir) 
                    if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))]
     
     if not image_files:
-        print(f"错误: 目录中没有找到图片文件")
+        print(f"错误: related目录中没有找到图片文件")
         sys.exit(1)
     
     print(f"\n预览导入: {directory}")
@@ -298,7 +303,7 @@ def preview_import(directory, enable_llm=True):
             # LLM分类预览
             llm_info = ""
             if enable_llm:
-                image_path = os.path.join(target_dir, filename)
+                image_path = os.path.join(related_dir, filename)
                 print(f"  🤖 正在分析: {filename}...")
                 print(f"     ", end="", flush=True)
                 category, classification = classify_with_lmstudio(image_path, enable_streaming=True)
@@ -408,19 +413,24 @@ def import_batch(directory, check_duplicates=True, threshold=1, interactive=Fals
         print(f"错误: 目录不存在: {directory}")
         sys.exit(1)
     
-    # 扫描图片文件
+    # 扫描related子目录中的图片文件
+    related_dir = os.path.join(target_dir, 'related')
+    if not os.path.exists(related_dir):
+        print(f"错误: related子目录不存在: {related_dir}")
+        sys.exit(1)
+    
     try:
-        all_files = os.listdir(target_dir)
+        all_files = os.listdir(related_dir)
     except Exception as e:
-        print(f"错误: 无法读取目录: {e}")
+        print(f"错误: 无法读取related目录: {e}")
         sys.exit(1)
     
     image_files = [f for f in all_files 
                    if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))]
     
     if not image_files:
-        print(f"错误: 目录中没有找到图片文件")
-        print(f"目录内容: {len(all_files)} 个文件")
+        print(f"错误: related目录中没有找到图片文件")
+        print(f"related目录内容: {len(all_files)} 个文件")
         sys.exit(1)
     
     print(f"\n开始导入: {directory}")
@@ -455,8 +465,9 @@ def import_batch(directory, check_duplicates=True, threshold=1, interactive=Fals
         print("=" * 70)
     
     for idx, filename in enumerate(sorted(image_files), 1):
-        image_path = os.path.join(target_dir, filename)
+        image_path = os.path.join(related_dir, filename)
         # gallery-dl的JSON文件名格式是 filename.jpg.json，不是 filename.json
+        # 元数据文件仍然在主目录中
         json_path = os.path.join(target_dir, filename + '.json')
         
         print(f"\n[{idx}/{len(image_files)}] 处理: {filename}")
@@ -599,15 +610,17 @@ def list_available_batches():
     for dirname in os.listdir(downloads_dir):
         dir_path = os.path.join(downloads_dir, dirname)
         if os.path.isdir(dir_path):
-            # 统计图片数量
-            image_count = len([f for f in os.listdir(dir_path) 
-                             if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))])
-            if image_count > 0:
-                batches.append({
-                    'name': dirname,
-                    'count': image_count,
-                    'path': dir_path
-                })
+            # 检查related子目录中的图片数量
+            related_dir = os.path.join(dir_path, 'related')
+            if os.path.exists(related_dir) and os.path.isdir(related_dir):
+                image_count = len([f for f in os.listdir(related_dir) 
+                                 if f.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp'))])
+                if image_count > 0:
+                    batches.append({
+                        'name': dirname,
+                        'count': image_count,
+                        'path': dir_path
+                    })
     
     return sorted(batches, key=lambda x: x['name'], reverse=False)
 
