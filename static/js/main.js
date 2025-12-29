@@ -98,16 +98,55 @@ window.setupRatingHandler = function(form) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 为HTML元素添加js-enabled类，用于CSS控制非JS设备的元素显示
-    document.documentElement.classList.add('js-enabled');
-    
-    // --- 逻辑1: 无刷新评级 (代码无变化) ---
+// 统一的卡片初始化函数
+window.setupGalleryCards = function() {
+    // --- 为图片添加点击链接 ---
+    const galleryCards = document.querySelectorAll('.card');
+
+    galleryCards.forEach(card => {
+        const image = card.querySelector('img');
+        const titleLink = card.querySelector('.title a'); // 找到标题中的链接
+
+        // 如果卡片里同时有图片和标题链接，且图片还没有被包裹
+        if (image && titleLink && !image.parentNode.matches('a')) {
+            // 获取标题链接的URL
+            const detailUrl = titleLink.href;
+
+            // 创建一个新的 <a> 标签来包裹图片
+            const imageLinkWrapper = document.createElement('a');
+            imageLinkWrapper.href = detailUrl;
+
+            // --- "包裹"操作 ---
+            // 1. 在DOM中，将新的 <a> 标签插入到图片的前面
+            image.parentNode.insertBefore(imageLinkWrapper, image);
+            // 2. 将图片移动到新的 <a> 标签内部，成为其子元素
+            imageLinkWrapper.appendChild(image);
+        }
+    });
+
+    // --- 启用图片链接 ---
+    // 找到所有被CSS默认禁用的图片链接
+    const disabledImageLinks = document.querySelectorAll('.card-image-link');
+
+    disabledImageLinks.forEach(link => {
+        // 使用JS将它们的点击功能恢复
+        link.style.pointerEvents = 'auto';
+    });
+
+    // --- 设置评分表单事件 ---
     const ratingForms = document.querySelectorAll('.rating-form form, .rating-form-detail form');
 
     ratingForms.forEach(form => {
         setupRatingHandler(form);
     });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 为HTML元素添加js-enabled类，用于CSS控制非JS设备的元素显示
+    document.documentElement.classList.add('js-enabled');
+    
+    // --- 统一的卡片初始化 ---
+    setupGalleryCards();
 
     // --- 逻辑2: 新增的无刷新分级 ---
     const classificationForm = document.querySelector('.classification-form');
@@ -182,37 +221,4 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
-    // --- 逻辑4: (渐进增强) 为支持JS的浏览器给图片添加链接 ---
-    const galleryCards = document.querySelectorAll('.card');
-
-    galleryCards.forEach(card => {
-        const image = card.querySelector('img');
-        const titleLink = card.querySelector('.title a'); // 找到标题中的链接
-
-        // 如果卡片里同时有图片和标题链接
-        if (image && titleLink) {
-            // 获取标题链接的URL
-            const detailUrl = titleLink.href;
-
-            // 创建一个新的 <a> 标签来包裹图片
-            const imageLinkWrapper = document.createElement('a');
-            imageLinkWrapper.href = detailUrl;
-
-            // --- "包裹"操作 ---
-            // 1. 在DOM中，将新的 <a> 标签插入到图片的前面
-            image.parentNode.insertBefore(imageLinkWrapper, image);
-            // 2. 将图片移动到新的 <a> 标签内部，成为其子元素
-            imageLinkWrapper.appendChild(image);
-        }
-    });
-
-    // --- 逻辑5: (渐进增强) 为支持JS的浏览器重新启用图片链接 ---
-    // 找到所有被CSS默认禁用的图片链接
-    const disabledImageLinks = document.querySelectorAll('.card-image-link');
-
-    disabledImageLinks.forEach(link => {
-        // 使用JS将它们的点击功能恢复
-        link.style.pointerEvents = 'auto';
-    });
 });
