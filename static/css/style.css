@@ -31,13 +31,27 @@ header {
     background-color: var(--card-color);
     padding: 1rem 2rem;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border-color);
     flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 2rem; /* 行间距1rem，列间距2rem */
+    border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+    flex: 0 0 auto; /* 不伸缩，保持原始大小 */
+}
+
+header nav {
+    flex: 1 1 auto; /* 可伸缩，占据剩余空间 */
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-start; /* 改为左对齐 */
+    min-width: fit-content; /* 确保导航不会被过度压缩 */
 }
 
 .header-right {
+    flex: 0 0 auto; /* 不伸缩，保持原始大小 */
     display: flex;
     align-items: center;
     gap: 1rem;
@@ -821,11 +835,6 @@ footer {
     transform: rotate(-45deg) translate(6px, -6px);
 }
 
-header nav {
-    display: flex;
-    gap: 1.5rem;
-    flex-wrap: wrap; /* 允许导航链接在必要时换行 */
-}
 .controls-container {
     display: flex;
     flex-wrap: wrap;
@@ -966,18 +975,23 @@ header nav {
 
 
 /* --- 头部布局调整 --- */
-/* 当屏幕宽度小于或等于 900px 时，应用以下规则 */
-@media (max-width: 900px) {
+/* 只在小屏幕时强制垂直布局 */
+@media (max-width: 700px) {
     header {
-        /* 让标题、导航和搜索框垂直堆叠 */
         flex-direction: column;
-        gap: 1rem; /* 在堆叠的元素之间增加一些间距 */
+        text-align: center;
     }
-
+    
     header nav {
-        /* 在小屏幕上让导航链接水平居中 */
+        order: 2;
+        width: 100%;
+        justify-content: center; /* 在垂直布局时居中对齐 */
+    }
+    
+    .header-right {
+        order: 3;
+        width: 100%;
         justify-content: center;
-        flex-wrap: wrap; /* 允许导航链接在必要时换行 */
     }
 }
 
@@ -988,26 +1002,44 @@ header nav {
         display: flex; /* 显示汉堡菜单 */
     }
 
+    /* 导航默认隐藏在左侧，保持固定定位以支持动画 */
     header nav {
         position: fixed;
         top: 0;
         left: -100%; /* 默认隐藏在左侧 */
-        width: 250px; /* 菜单宽度 */
-        height: 100vh; /* 全屏高度 */
+        width: 250px;
+        height: 100vh;
         background-color: var(--card-color);
         border-right: 1px solid var(--border-color);
+        display: flex;
         flex-direction: column;
         justify-content: flex-start;
         align-items: flex-start;
-        padding: 4rem 1rem 1rem; /* 顶部留出空间给标题 */
+        padding: 4rem 1rem 1rem;
         gap: 1rem;
-        transition: left 0.3s ease;
+        transition: left 0.3s ease; /* 滑动动画 */
         z-index: 1000;
         box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
     }
-
+    
+    /* 当导航打开时滑入 */
     header nav.open {
-        left: 0; /* 显示菜单 */
+        left: 0; /* 滑入到可见位置 */
+    }
+    
+    /* 调整header-right布局，让搜索栏居中，汉堡按钮在右侧 */
+    .header-right {
+        width: 100%;
+        justify-content: center;
+        position: relative; /* 为汉堡按钮的绝对定位做准备 */
+    }
+    
+    /* 汉堡按钮绝对定位到右侧 */
+    .hamburger-menu {
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
     }
 
     header nav a {
