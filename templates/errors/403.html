@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="error-page-container">
+    <h2>403 - Access Forbidden</h2>
+    <p>Sorry, you don't have permission to access this resource.</p>
+    {% if is_public %}
+    <p>This action is not available in public mode. Some features are restricted to maintain the integrity of the gallery.</p>
+    {% else %}
+    <p>Access to this resource requires proper authentication.</p>
+    {% endif %}
+    
+    <div class="error-actions">
+        <a href="{{ mode_url_for('gallery') }}" class="error-button">Go Back to the Gallery Homepage</a>
+    </div>
+</div>
+{% endblock %}

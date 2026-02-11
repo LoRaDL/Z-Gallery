@@ -9,15 +9,17 @@
 </head>
 <body>
     <header>
-        <h1><a href="{{ url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
+        <h1><a href="{{ mode_url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
         <nav>
-            <a href="{{ url_for('categories_list') }}">Categories</a>
-            <a href="{{ url_for('gallery', sort='random') }}">Random</a>
+            <a href="{{ mode_url_for('categories_list') }}">Categories</a>
+            <a href="{{ mode_url_for('gallery', sort='random') }}">Random</a>
             <a href="#" id="image-search-trigger">Search by Image</a>
-            <a href="{{ url_for('add_artwork_page') }}">Add Artwork</a>
-            <a href="{{ url_for('statistics') }}" class="active">Statistics</a>
+            {% if is_private %}
+            <a href="{{ mode_url_for('add_artwork_page') }}">Add Artwork</a>
+            {% endif %}
+            <a href="{{ mode_url_for('statistics') }}" class="active">Statistics</a>
         </nav>
-        <form class="search-form" action="{{ url_for('gallery') }}" method="get">
+        <form class="search-form" action="{{ mode_url_for('gallery') }}" method="get">
             <input type="text" name="q" placeholder="Search..." value="{{ current_filters.q or '' }}">
             <button type="submit">Go</button>
         </form>
@@ -38,7 +40,7 @@
             <canvas id="statistics-chart"></canvas>
         </div>
         <div class="noscript-link">
-            <p><a href="{{ url_for('artist_ranking_noscript') }}">View Artist Ranking (No JavaScript)</a></p>
+            <p><a href="{{ mode_url_for('artist_ranking_noscript') }}">View Artist Ranking (No JavaScript)</a></p>
         </div>
     </main>
     <footer>

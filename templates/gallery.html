@@ -31,28 +31,28 @@
 <div class="controls-container">
     <!-- Sort Group -->
     <span class="filter-label">Sort:</span>
-    <a href="{{ url_for('gallery', **generate_url_params('sort', 'newest')) }}" class="{{ 'active' if current_sort == 'newest' }}">Newest</a>
-    <a href="{{ url_for('gallery', **generate_url_params('sort', 'oldest')) }}" class="{{ 'active' if current_sort == 'oldest' }}">Oldest</a>
-    <a href="{{ url_for('gallery', **generate_url_params('sort', 'latest_added')) }}" class="{{ 'active' if current_sort == 'latest_added' }}">Latest Added</a>
-    <a href="{{ url_for('gallery', **generate_url_params('sort', 'rating')) }}" class="{{ 'active' if current_sort == 'rating' }}">Rating</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'newest')) }}" class="{{ 'active' if current_sort == 'newest' }}">Newest</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'oldest')) }}" class="{{ 'active' if current_sort == 'oldest' }}">Oldest</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'latest_added')) }}" class="{{ 'active' if current_sort == 'latest_added' }}">Latest Added</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'rating')) }}" class="{{ 'active' if current_sort == 'rating' }}">Rating</a>
 
     <span class="separator">|</span>
 
     <!-- Classification Group -->
     <span class="filter-label">Class:</span>
-    <a href="{{ url_for('gallery', **generate_url_params('classification_filter', 'unspecified')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'unspecified' }}">Unspecified</a>
-    <a href="{{ url_for('gallery', **generate_url_params('classification_filter', 'sfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'sfw' }}">SFW</a>
-    <a href="{{ url_for('gallery', **generate_url_params('classification_filter', 'mature')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'mature' }}">Mature</a>
-    <a href="{{ url_for('gallery', **generate_url_params('classification_filter', 'nsfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'nsfw' }}">NSFW</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('classification_filter', 'unspecified')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'unspecified' }}">Unspecified</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('classification_filter', 'sfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'sfw' }}">SFW</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('classification_filter', 'mature')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'mature' }}">Mature</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('classification_filter', 'nsfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'nsfw' }}">NSFW</a>
 
     <span class="separator">|</span>
 
     <!-- Category Group -->
     <span class="filter-label">Category:</span>
-    <a href="{{ url_for('gallery', **generate_url_params('category', 'fanart_non_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_non_comic' }}">Art</a>
-    <a href="{{ url_for('gallery', **generate_url_params('category', 'fanart_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_comic' }}">Comic</a>
-    <a href="{{ url_for('gallery', **generate_url_params('category', 'real_photo')) }}" class="{{ 'active' if current_filters.get('category') == 'real_photo' }}">Photo</a>
-    <a href="{{ url_for('gallery', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('category', 'fanart_non_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_non_comic' }}">Art</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('category', 'fanart_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_comic' }}">Comic</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('category', 'real_photo')) }}" class="{{ 'active' if current_filters.get('category') == 'real_photo' }}">Photo</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
 
     <span class="separator">|</span>
 
@@ -60,10 +60,10 @@
 
     <!-- Rating Group -->
     <span class="filter-label">Rating:</span>
-    <a href="{{ url_for('gallery', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
-    <a href="{{ url_for('gallery', **generate_url_params('rating_filter', '2_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '2_plus' }}">2★+</a>
-    <a href="{{ url_for('gallery', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
-    <a href="{{ url_for('gallery', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', '2_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '2_plus' }}">2★+</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>
 </div>
 
     {% if current_filters %}
@@ -72,16 +72,16 @@
         <!-- FIX: Use the new helper function for removing filters -->
         {% for key, value in current_filters.items() %}
             {% if key == 'similar_to' %}
-                <a href="{{ url_for('gallery', **generate_url_params(key, None)) }}" class="filter-pill">
+                <a href="{{ mode_url_for('gallery', **generate_url_params(key, None)) }}" class="filter-pill">
                     Similar Images (Threshold: {{ current_filters.get('threshold', '10') }}) &times;
                 </a>
             {% elif key not in ['sort', 'seed', 'page'] %}
-                <a href="{{ url_for('gallery', **generate_url_params(key, None)) }}" class="filter-pill">
+                <a href="{{ mode_url_for('gallery', **generate_url_params(key, None)) }}" class="filter-pill">
                     {{ key }}: {{ value }} &times;
                 </a>
             {% endif %}
         {% endfor %}
-        <a href="{{ url_for('gallery', sort='random') }}" class="filter-pill clear-all">Clear All</a>
+        <a href="{{ mode_url_for('gallery', sort='random') }}" class="filter-pill clear-all">Clear All</a>
     </div>
     {% endif %}
 
@@ -116,8 +116,8 @@
                     {% if artwork_columns[loop.index0] == col %}
                         <div class="card" id="artwork-{{ art.id }}">
                             <!-- 核心改动: 恢复图片链接结构 -->
-                            <a href="{{ url_for('artwork_detail', artwork_id=art.id) }}#page-top" class="card-image-link">
-                                {% if config.ENABLE_FULL_RES_CARD_IMAGES %}
+                            <a href="{{ mode_url_for('artwork_detail', artwork_id=art.id) }}#page-top" class="card-image-link">
+                                {% if is_private and config.ENABLE_FULL_RES_CARD_IMAGES %}
                                     <img src="{{ url_for('image_proxy', artwork_id=art.id) }}" 
                                          alt="{{ art.title or art.file_name }}" 
                                          loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
@@ -135,20 +135,12 @@
                                 <div class="card-classification">{{ art.classification|title if art.classification else 'Unspecified' }}</div>
                             {% endif %}
                             <div class="card-info">
-                                <p class="artist"><a href="{{ url_for('gallery', artist=art.artist) }}">{{ art.artist or 'Unknown' }}</a></p>
+                                <p class="artist"><a href="{{ mode_url_for('gallery', artist=art.artist) }}">{{ art.artist or 'Unknown' }}</a></p>
                                 <p class="title">
-                                    <a href="{{ url_for('artwork_detail', artwork_id=art.id) }}#page-top">{{ art.title or 'Untitled' }}</a>
+                                    <a href="{{ mode_url_for('artwork_detail', artwork_id=art.id) }}#page-top">{{ art.title or 'Untitled' }}</a>
                                 </p>
-                                <div class="rating-form">
-                                    <form action="{{ url_for('rate_artwork', artwork_id=art.id) }}" method="post">
-                                        {% for i in range(1, 11) %}
-                                            <button type="submit" name="rating" value="{{ i }}" class="{{ 'rated' if art.rating and i <= art.rating }}">
-                                                {# 这是核心改动: 根据条件选择星星字符 #}
-                                                {% if art.rating and i <= art.rating %}★{% else %}☆{% endif %}
-                                            </button>
-                                        {% endfor %}
-                                    </form>
-                                </div>
+                                {% set artwork = art %}
+                                {% include 'components/rating_stars.html' with context %}
                             </div>
                         </div>
                     {% endif %}
@@ -165,15 +157,15 @@
         <!-- Prev/Next 按钮行 -->
         <div class="pagination-nav">
             {% if page > 1 %}
-                <a href="{{ url_for('gallery', **generate_url_params('page', page - 1)) }}">« Prev</a>
+                <a href="{{ mode_url_for('gallery', **generate_url_params('page', page - 1)) }}">« Prev</a>
             {% endif %}
             {% if page < total_pages %}
-                <a href="{{ url_for('gallery', **generate_url_params('page', page + 1)) }}">Next »</a>
+                <a href="{{ mode_url_for('gallery', **generate_url_params('page', page + 1)) }}">Next »</a>
             {% endif %}
         </div>
         
         <!-- Page 表单行 -->
-        <form action="{{ url_for('gallery') }}" method="get" class="page-jump-form">
+        <form action="{{ mode_url_for('gallery') }}" method="get" class="page-jump-form">
             <span>Page</span>
             <input type="number" name="page" value="{{ page }}" min="1" max="{{ total_pages }}">
             <span>of {{ total_pages }}</span>

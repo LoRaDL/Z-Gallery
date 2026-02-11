@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="error-page-container">
+    <h2>429 - Too Many Requests</h2>
+    <p>Whoa there, speedy! You've made too many requests in a short period of time.</p>
+    <p>Even Flash the sloth needs a break sometimes! Please wait a bit before trying again.</p>
+    
+    <div class="error-actions">
+        <a href="{{ mode_url_for('gallery') }}" class="error-button">Go Back to the Gallery Homepage</a>
+    </div>
+</div>
+{% endblock %}

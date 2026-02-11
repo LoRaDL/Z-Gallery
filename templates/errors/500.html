@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="error-page-container">
+    <h2>500 - Internal Server Error</h2>
+    <p>Oops! Something went wrong on our end.</p>
+    <p>Our team has been notified and is working to fix the issue. Please try again later.</p>
+    
+    <div class="error-actions">
+        <a href="{{ mode_url_for('gallery') }}" class="error-button">Go Back to the Gallery Homepage</a>
+    </div>
+</div>
+{% endblock %}

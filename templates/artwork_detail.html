@@ -12,11 +12,11 @@
             <div class="info-section">
                 <div class="info-row">
                     <strong>Artist:</strong> 
-                    <span class="editable-field" data-field="artist"><a href="{{ url_for('gallery', artist=artwork.artist) }}">{{ artwork.artist or 'Unknown' }}</a></span>
+                    <span class="editable-field" data-field="artist"><a href="{{ mode_url_for('gallery', artist=artwork.artist) }}">{{ artwork.artist or 'Unknown' }}</a></span>
                 </div>
                 <div class="info-row">
                     <strong>Platform:</strong> 
-                    <span class="editable-field" data-field="source_platform"><a href="{{ url_for('gallery', source_platform=artwork.source_platform) }}">{{ artwork.source_platform or 'Unknown' }}</a></span>
+                    <span class="editable-field" data-field="source_platform"><a href="{{ mode_url_for('gallery', source_platform=artwork.source_platform) }}">{{ artwork.source_platform or 'Unknown' }}</a></span>
                 </div>
                 <div class="info-row">
                     <strong>Published Date:</strong> 
@@ -61,28 +61,24 @@
             </div>
 
             <!-- 编辑按钮 (JS设备) -->
+            {% if is_private %}
             <button id="edit-fields-btn" class="edit-button">Edit Fields</button>
             <button id="save-fields-btn" class="save-button" style="display: none;">Save Changes</button>
             <button id="cancel-edit-btn" class="cancel-button" style="display: none;">Cancel</button>
+            {% endif %}
 
             <!-- 评分区域 -->
             <div class="rating-section">
                 <strong>Rate this work:</strong>
-                <form class="rating-form" action="{{ url_for('rate_artwork', artwork_id=artwork.id) }}" method="post">
-                    {% for i in range(1, 11) %}
-                        <button type="submit" name="rating" value="{{ i }}" class="{{ 'rated' if artwork.rating and i <= artwork.rating }}">
-                            {% if artwork.rating and i <= artwork.rating %}★{% else %}☆{% endif %}
-                        </button>
-                    {% endfor %}
-                    <span class="current-rating">(Current: {{ artwork.rating or 'Unrated' }}/10)</span>
-                </form>
+                {% include 'components/rating_stars.html' with context %}
             </div>
 
             <!-- 分类管理区域 -->
+            {% if is_private %}
             <div class="classification-section">
                 <div class="classification-form">
                     <strong>Classification:</strong>
-                    <form class="classification-form" action="{{ url_for('classify_artwork', artwork_id=artwork.id) }}" method="post">
+                    <form class="classification-form" action="{{ mode_url_for('classify_artwork', artwork_id=artwork.id) }}" method="post">
                         <select name="classification">
                             <option value="sfw" {% if artwork.classification == 'sfw' %}selected{% endif %}>SFW (Safe For Work)</option>
                             <option value="mature" {% if artwork.classification == 'mature' %}selected{% endif %}>Mature</option>
@@ -98,7 +94,7 @@
 
                 <div class="category-form">
                     <strong>Category:</strong>
-                    <form class="category-form" action="{{ url_for('set_category', artwork_id=artwork.id) }}" method="post">
+                    <form class="category-form" action="{{ mode_url_for('set_category', artwork_id=artwork.id) }}" method="post">
                         <select name="category">
                             <option value="fanart_non_comic" {% if artwork.category == 'fanart_non_comic' %}selected{% endif %}>Art</option>
                             <option value="fanart_comic" {% if artwork.category == 'fanart_comic' %}selected{% endif %}>Comic</option>
@@ -112,6 +108,7 @@
                     </form>
                 </div>
             </div>
+            {% endif %}
 
             <p class="file-path-info">File: {{ artwork.file_name }}</p>
 
@@ -121,7 +118,7 @@
                 <h3>Series</h3>
                 <div class="series-thumbnails">
                     {% for series_artwork in series_artworks %}
-                    <a href="{{ url_for('artwork_detail', artwork_id=series_artwork.id) }}" class="series-thumbnail">
+                    <a href="{{ mode_url_for('artwork_detail', artwork_id=series_artwork.id) }}" class="series-thumbnail">
                         <img src="{{ url_for('image_proxy', artwork_id=series_artwork.id) }}" alt="{{ series_artwork.title or series_artwork.file_name }}">
                     </a>
                     {% endfor %}
@@ -130,6 +127,7 @@
             {% endif %}
 
             <div class="detail-actions">
+                {% if is_private %}
                 <!-- 为不支持JS的设备添加表单 -->
                 <noscript>
                     <form action="/find_similar/{{ artwork.id }}" method="get" style="display: inline;">
@@ -139,9 +137,10 @@
                 <!-- 支持JS的设备显示链接 -->
                 <a href="#" id="find-similar-btn" data-artwork-id="{{ artwork.id }}" class="action-button" style="display: none;">Find Similar</a>
                 <button id="delete-artwork-btn" data-artwork-id="{{ artwork.id }}" class="action-button danger">Delete</button>
+                {% endif %}
             </div>
 
-            <a href="{{ url_for('gallery') }}" class="back-link">&laquo; Back to Gallery</a>
+            <a href="{{ mode_url_for('gallery') }}" class="back-link">&laquo; Back to Gallery</a>
         </div>
     </div>
 

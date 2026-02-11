@@ -26,3 +26,12 @@ STATIC_DIR = "static"
 
 # 8. 图片显示配置
 ENABLE_FULL_RES_CARD_IMAGES = True
+
+# 9. 双模式配置
+ENABLE_DUAL_MODE = True
+DEFAULT_MODE = 'public'
+REQUIRE_CF_ACCESS = False  # 是否在应用层验证 Cloudflare Access
+
+# 10. 公开模式限制
+PUBLIC_MODE_RATE_LIMIT = '100/hour'  # 速率限制
+PUBLIC_MODE_ENABLE_SEARCH = True  # 是否启用搜索功能

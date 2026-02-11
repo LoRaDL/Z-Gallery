@@ -1,0 +1,98 @@
+/* Public Mode Specific Styles */
+
+/* Hide all management controls in public mode */
+.mode-public .edit-button,
+.mode-public .delete-button,
+.mode-public #add-artwork-link,
+.mode-public .add-artwork-link,
+.mode-public .classification-form,
+.mode-public .category-form,
+.mode-public .admin-controls,
+.mode-public [href*="add_artwork"],
+.mode-public [href*="monitoring"] {
+    display: none !important;
+}
+
+/* Hide Image Wall, Slide View, and Comics navigation links in public mode */
+.mode-public nav a[href*="/image-wall"],
+.mode-public nav a[href*="/image_wall"],
+.mode-public nav a[href*="/slide-view"],
+.mode-public nav a[href*="/slide_view"],
+.mode-public nav a[href*="/comic"] {
+    display: none !important;
+}
+
+/* Disable rating interaction in public mode */
+.mode-public .rating-form button {
+    pointer-events: none;
+    cursor: default;
+}
+
+/* Remove hover effects on rating stars in public mode */
+.mode-public .rating-form button:hover {
+    transform: none;
+}
+
+/* Static display for ratings in public mode */
+.mode-public .rating-display {
+    display: flex; /* Use flexbox like private mode */
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+/* Make public mode stars same size as private mode with consistent spacing */
+.mode-public .rating-display .star {
+    font-size: 1.2em; /* Same as private mode */
+    color: var(--star-unrated, #ccc);
+    flex: 1; /* Same spacing logic as private mode */
+    text-align: center;
+}
+
+.mode-public .rating-display .star.rated {
+    color: var(--star-rated, #ffc107);
+}
+
+/* Hide the rating value text in public mode */
+.mode-public .rating-display .rating-value {
+    display: none;
+}
+
+/* Hide "Rate this work:" label in public mode detail page */
+.mode-public .rating-section strong {
+    display: none;
+}
+
+/* Ensure detail page rating stars match private mode size and spacing */
+.mode-public .rating-section .rating-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.mode-public .rating-section .rating-display .star {
+    font-size: 1.2em; /* Same as private mode */
+    color: var(--star-unrated, #ccc);
+    flex: 1; /* Same spacing logic as private mode */
+    text-align: center;
+}
+
+.mode-public .rating-section .rating-display .star.rated {
+    color: var(--star-rated, #ffc107);
+}
+
+/* Hide form elements in public mode */
+.mode-public .rating-form form button[type="submit"] {
+    pointer-events: none;
+    cursor: default;
+}
+
+/* Ensure read-only appearance for public mode */
+.mode-public input[type="radio"],
+.mode-public input[type="checkbox"],
+.mode-public select,
+.mode-public textarea {
+    pointer-events: none;
+    opacity: 0.6;
+}

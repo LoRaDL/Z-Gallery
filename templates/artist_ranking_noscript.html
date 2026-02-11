@@ -14,15 +14,15 @@
 </head>
 <body>
     <header>
-        <h1><a href="{{ url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
+        <h1><a href="{{ mode_url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
         <nav>
-            <a href="{{ url_for('categories_list') }}">Categories</a>
-            <a href="{{ url_for('gallery', sort='random') }}">Random</a>
+            <a href="{{ mode_url_for('categories_list') }}">Categories</a>
+            <a href="{{ mode_url_for('gallery', sort='random') }}">Random</a>
             <a href="#" id="image-search-trigger" class="js-only">Search by Image</a>
-            <a href="{{ url_for('add_artwork_page') }}">Add Artwork</a>
-            <a href="{{ url_for('statistics') }}" class="active">Statistics</a>
+            <a href="{{ mode_url_for('add_artwork_page') }}">Add Artwork</a>
+            <a href="{{ mode_url_for('statistics') }}" class="active">Statistics</a>
         </nav>
-        <form class="search-form" action="{{ url_for('gallery') }}" method="get">
+        <form class="search-form" action="{{ mode_url_for('gallery') }}" method="get">
             <input type="text" name="q" placeholder="Search..." value="{{ current_filters.q or '' }}">
             <button type="submit">Go</button>
         </form>
@@ -43,7 +43,7 @@
                 {% for artist in artist_ranking %}
                 <tr>
                     <td>{{ loop.index }}</td>
-                    <td><a href="{{ url_for('gallery', artist=artist.name) }}">{{ artist.name }}</a></td>
+                    <td><a href="{{ mode_url_for('gallery', artist=artist.name) }}">{{ artist.name }}</a></td>
                     <td>{{ "%.2f" | format(artist.weighted_score) }}</td>
                     <td>{{ artist.total_works }}</td>
                     <td>{{ "%.2f" | format(artist.average_rating) }}</td>

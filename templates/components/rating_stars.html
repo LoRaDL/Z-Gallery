@@ -1,0 +1,29 @@
+{# Rating Stars Component - Mode-aware rating display #}
+{# Parameters:
+   - mode: 'private' or 'public' (determines interactive vs static display)
+   - artwork: artwork object with id and rating fields
+   - is_private: boolean flag for private mode (optional, derived from mode)
+#}
+
+<div class="rating-form">
+    {% if is_private %}
+        {# Private Mode: Interactive rating with form and clickable buttons #}
+        <form action="{{ mode_url_for('rate_artwork', artwork_id=artwork.id) }}" method="post">
+            {% for i in range(1, 11) %}
+                <button type="submit" name="rating" value="{{ i }}" class="{{ 'rated' if artwork.rating and i <= artwork.rating }}">
+                    {% if artwork.rating and i <= artwork.rating %}★{% else %}☆{% endif %}
+                </button>
+            {% endfor %}
+        </form>
+    {% else %}
+        {# Public Mode: Static rating display only #}
+        <div class="rating-display">
+            {% for i in range(1, 11) %}
+                <span class="star {{ 'rated' if artwork.rating and i <= artwork.rating }}">
+                    {% if artwork.rating and i <= artwork.rating %}★{% else %}☆{% endif %}
+                </span>
+            {% endfor %}
+            <span class="rating-value">({{ artwork.rating or 'Unrated' }}/10)</span>
+        </div>
+    {% endif %}
+</div>

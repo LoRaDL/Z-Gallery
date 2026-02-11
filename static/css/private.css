@@ -1,0 +1,27 @@
+/* Private Mode Specific Styles */
+
+/* Private mode specific theme colors */
+.mode-private {
+    /* Can add private-specific color schemes or themes here */
+}
+
+/* Ensure all management controls are visible in private mode */
+.mode-private .edit-button,
+.mode-private .delete-button,
+.mode-private .add-artwork-link,
+.mode-private .classification-form,
+.mode-private .category-form {
+    display: block;
+}
+
+/* Interactive rating stars in private mode */
+.mode-private .rating-form button {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+/* Private mode specific hover effects */
+.mode-private .rating-form button:hover {
+    transform: scale(1.1);
+    transition: transform 0.1s ease;
+}

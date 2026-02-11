@@ -60,37 +60,37 @@
 <div class="controls-container">
     <!-- Sort Group -->
     <span class="filter-label">Sort:</span>
-    <a href="{{ url_for('image_wall', **generate_url_params('sort', 'newest')) }}" class="{{ 'active' if current_sort == 'newest' }}">Newest</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('sort', 'oldest')) }}" class="{{ 'active' if current_sort == 'oldest' }}">Oldest</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('sort', 'latest_added')) }}" class="{{ 'active' if current_sort == 'latest_added' }}">Latest Added</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('sort', 'rating')) }}" class="{{ 'active' if current_sort == 'rating' }}">Rating</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('sort', 'newest')) }}" class="{{ 'active' if current_sort == 'newest' }}">Newest</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('sort', 'oldest')) }}" class="{{ 'active' if current_sort == 'oldest' }}">Oldest</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('sort', 'latest_added')) }}" class="{{ 'active' if current_sort == 'latest_added' }}">Latest Added</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('sort', 'rating')) }}" class="{{ 'active' if current_sort == 'rating' }}">Rating</a>
 
     <span class="separator">|</span>
 
     <!-- Classification Group -->
     <span class="filter-label">Class:</span>
-    <a href="{{ url_for('image_wall', **generate_url_params('classification_filter', 'unspecified')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'unspecified' }}">Unspecified</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('classification_filter', 'sfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'sfw' }}">SFW</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('classification_filter', 'mature')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'mature' }}">Mature</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('classification_filter', 'nsfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'nsfw' }}">NSFW</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('classification_filter', 'unspecified')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'unspecified' }}">Unspecified</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('classification_filter', 'sfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'sfw' }}">SFW</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('classification_filter', 'mature')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'mature' }}">Mature</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('classification_filter', 'nsfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'nsfw' }}">NSFW</a>
 
     <span class="separator">|</span>
 
     <!-- Category Group -->
     <span class="filter-label">Category:</span>
-    <a href="{{ url_for('image_wall', **generate_url_params('category', 'fanart_non_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_non_comic' }}">Art</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('category', 'fanart_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_comic' }}">Comic</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('category', 'real_photo')) }}" class="{{ 'active' if current_filters.get('category') == 'real_photo' }}">Photo</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('category', 'fanart_non_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_non_comic' }}">Art</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('category', 'fanart_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_comic' }}">Comic</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('category', 'real_photo')) }}" class="{{ 'active' if current_filters.get('category') == 'real_photo' }}">Photo</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
 
     <span class="separator">|</span>
 
     <!-- Rating Group -->
     <span class="filter-label">Rating:</span>
-    <a href="{{ url_for('image_wall', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('rating_filter', '2_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '2_plus' }}">2★+</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
-    <a href="{{ url_for('image_wall', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('rating_filter', '2_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '2_plus' }}">2★+</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
+    <a href="{{ mode_url_for('image_wall', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>
 
     <span class="separator">|</span>
 
@@ -98,17 +98,17 @@
     <span class="filter-label">Columns:</span>
     {% set columns_params = current_filters.copy() %}
     {% set _ = columns_params.update({'columns': 2}) %}
-    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 2 }}">2</a>
+    <a href="{{ mode_url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 2 }}">2</a>
     {% set _ = columns_params.update({'columns': 3}) %}
-    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 3 }}">3</a>
+    <a href="{{ mode_url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 3 }}">3</a>
     {% set _ = columns_params.update({'columns': 4}) %}
-    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 4 }}">4</a>
+    <a href="{{ mode_url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 4 }}">4</a>
     {% set _ = columns_params.update({'columns': 5}) %}
-    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 5 }}">5</a>
+    <a href="{{ mode_url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 5 }}">5</a>
     {% set _ = columns_params.update({'columns': 6}) %}
-    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 6 }}">6</a>
+    <a href="{{ mode_url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 6 }}">6</a>
     {% set _ = columns_params.update({'columns': 8}) %}
-    <a href="{{ url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 8 }}">8</a>
+    <a href="{{ mode_url_for('image_wall', **columns_params) }}" class="{{ 'active' if columns == 8 }}">8</a>
 </div>
 
     {% if current_filters %}
@@ -116,16 +116,16 @@
         <span>Active Filters:</span>
         {% for key, value in current_filters.items() %}
             {% if key == 'similar_to' %}
-                <a href="{{ url_for('image_wall', **generate_url_params(key, None)) }}" class="filter-pill">
+                <a href="{{ mode_url_for('image_wall', **generate_url_params(key, None)) }}" class="filter-pill">
                     Similar Images (Threshold: {{ current_filters.get('threshold', '10') }}) &times;
                 </a>
             {% elif key not in ['sort', 'seed', 'columns'] %}
-                <a href="{{ url_for('image_wall', **generate_url_params(key, None)) }}" class="filter-pill">
+                <a href="{{ mode_url_for('image_wall', **generate_url_params(key, None)) }}" class="filter-pill">
                     {{ key }}: {{ value }} &times;
                 </a>
             {% endif %}
         {% endfor %}
-        <a href="{{ url_for('image_wall', sort='random', columns=columns) }}" class="filter-pill clear-all">Clear All</a>
+        <a href="{{ mode_url_for('image_wall', sort='random', columns=columns) }}" class="filter-pill clear-all">Clear All</a>
     </div>
     {% endif %}
 
@@ -195,6 +195,10 @@
 <script>
 // 虚拟滚动和滚动位置指示器
 document.addEventListener('DOMContentLoaded', function() {
+    // Mode detection for URL generation
+    const isPrivate = {{ 'true' if is_private else 'false' }};
+    const modeUrlPrefix = isPrivate ? '/private' : '/public';
+    
     // 虚拟滚动配置
     const BUFFER_SIZE = 50; // 视口外缓冲区大小（每个方向）
     const CARD_ESTIMATE_HEIGHT = 300; // 估算卡片高度（用于初始计算）
@@ -313,11 +317,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const isRated = art.rating && i <= art.rating;
             const ratedClass = isRated ? ' rated' : '';
             const star = isRated ? '★' : '☆';
-            ratingButtons += `<button type="submit" name="rating" value="${i}" class="${ratedClass}">${star}</button>`;
+            if (isPrivate) {
+                ratingButtons += `<button type="submit" name="rating" value="${i}" class="${ratedClass}">${star}</button>`;
+            } else {
+                ratingButtons += `<span class="star${ratedClass}">${star}</span>`;
+            }
         }
         
         cardDiv.innerHTML = `
-            <a href="/artwork/${art.id}#page-top" class="card-image-link">
+            <a href="${modeUrlPrefix}/artwork/${art.id}#page-top" class="card-image-link">
                 <img src="/static/thumbnails/${art.thumbnail_filename}" 
                      alt="${art.title}" 
                      loading="lazy"
@@ -326,14 +334,17 @@ document.addEventListener('DOMContentLoaded', function() {
             </a>
             ${classificationDiv}
             <div class="card-info">
-                <p class="artist"><a href="/image-wall?artist=${encodeURIComponent(art.artist)}&columns=${columnsCount}">${art.artist}</a></p>
+                <p class="artist"><a href="${modeUrlPrefix}/image-wall?artist=${encodeURIComponent(art.artist)}&columns=${columnsCount}">${art.artist}</a></p>
                 <p class="title">
-                    <a href="/artwork/${art.id}#page-top">${art.title}</a>
+                    <a href="${modeUrlPrefix}/artwork/${art.id}#page-top">${art.title}</a>
                 </p>
                 <div class="rating-form">
-                    <form action="/rate/${art.id}" method="post">
+                    ${isPrivate ? `<form action="${modeUrlPrefix}/rate/${art.id}" method="post">
                         ${ratingButtons}
-                    </form>
+                    </form>` : `<div class="rating-display">
+                        ${ratingButtons}
+                        <span class="rating-value">(${art.rating || 'Unrated'}/10)</span>
+                    </div>`}
                 </div>
             </div>
         `;

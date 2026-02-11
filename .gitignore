@@ -25,6 +25,7 @@ ENV/
 
 # IDE配置
 .vscode/
+.hypothesis/
 .idea/
 *.swp
 *.swo
@@ -33,6 +34,8 @@ ENV/
 # 日志文件
 logs/
 *.log
+todo.txt
+PROJECT_ANALYSIS.md
 
 # 临时文件和上传
 temp_uploads/

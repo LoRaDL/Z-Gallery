@@ -91,13 +91,13 @@
 </head>
 <body>
     <header>
-        <h1><a href="{{ url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
+        <h1><a href="{{ mode_url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
         <nav>
-            <a href="{{ url_for('categories_list') }}">Categories</a>
-            <a href="{{ url_for('slide_view', sort='random') }}">Slide View</a>
-            <a href="{{ url_for('gallery', sort='random') }}">Random</a>
-            <a href="{{ url_for('statistics') }}">Statistics</a>
-            <a href="{{ url_for('add_artwork_page') }}">Add Artwork</a>
+            <a href="{{ mode_url_for('categories_list') }}">Categories</a>
+            <a href="{{ mode_url_for('slide_view', sort='random') }}">Slide View</a>
+            <a href="{{ mode_url_for('gallery', sort='random') }}">Random</a>
+            <a href="{{ mode_url_for('statistics') }}">Statistics</a>
+            <a href="{{ mode_url_for('add_artwork_page') }}">Add Artwork</a>
             <a href="{{ url_for('monitoring') }}">Monitoring</a>
         </nav>
     </header>

@@ -109,9 +109,10 @@ def download(url, resume_dir=None, force_new=False, sleep_time=None):
         # 用户明确指定了目录
         output_dir = os.path.join(downloads_dir, resume_dir)
         if not os.path.exists(output_dir):
-            print(f"错误: 目录不存在: {resume_dir}")
-            sys.exit(1)
-        print(f"\n继续下载到: {resume_dir}")
+            os.makedirs(output_dir, exist_ok=True)
+            print(f"\n创建新目录: {resume_dir}")
+        else:
+            print(f"\n继续下载到: {resume_dir}")
     elif force_new:
         # 用户指定创建新批次
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -145,7 +146,7 @@ def download(url, resume_dir=None, force_new=False, sleep_time=None):
         '--download-archive', archive_file,
         '--filter', "extension in ('jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp')",
         '--config', config.GALLERY_DL_CONFIG_PATH,
-        '--abort', '9999',  # 允许大量错误而不中止下载
+        #'--abort', '9999',  # 允许大量错误而不中止下载
         url,
     ]
     

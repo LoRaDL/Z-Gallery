@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="error-page-container">
+    <h2>400 - Bad Request</h2>
+    <p>Oops! The request you sent contains invalid or malicious data.</p>
+    <p>Please check your input and try again. If you believe this is an error, please contact the administrator.</p>
+    
+    <div class="error-actions">
+        <a href="{{ mode_url_for('gallery') }}" class="error-button">Go Back to the Gallery Homepage</a>
+    </div>
+</div>
+{% endblock %}

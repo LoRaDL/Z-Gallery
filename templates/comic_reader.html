@@ -7,7 +7,7 @@
         <p class="comic-artist">by {{ comic.artist }}</p>
         {% endif %}
         <p class="comic-info">{{ pages|length }} pages</p>
-        <a href="{{ url_for('comics') }}" class="back-link">← Back to Comics</a>
+        <a href="{{ mode_url_for('comics') }}" class="back-link">← Back to Comics</a>
     </div>
 
     <div class="comic-pages">
