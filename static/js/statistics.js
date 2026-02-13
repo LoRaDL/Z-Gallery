@@ -20,7 +20,9 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {string} type - 统计类型
      */
     function fetchAndRenderChart(type) {
-        fetch(`/api/statistics/${type}`)
+        // 使用全局模式配置获取正确的 URL 前缀
+        const urlPrefix = window.GALLERY_MODE ? window.GALLERY_MODE.urlPrefix : '';
+        fetch(`${urlPrefix}/api/statistics/${type}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {

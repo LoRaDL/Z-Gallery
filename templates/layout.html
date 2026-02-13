@@ -28,6 +28,14 @@
         // 检测JS支持
         document.documentElement.classList.remove('no-js');
         document.documentElement.classList.add('js-enabled');
+        
+        // 全局模式配置 - 供 JavaScript 使用
+        window.GALLERY_MODE = {
+            isPrivate: {{ 'true' if is_private else 'false' }},
+            isPublic: {{ 'true' if is_public else 'false' }},
+            urlPrefix: '{{ "/private" if is_private else "/public" }}',
+            mode: '{{ mode }}'
+        };
     </script>
     <header>
         <h1><a href="{{ mode_url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>

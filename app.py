@@ -103,6 +103,36 @@ def legacy_rate_artwork(artwork_id):
     return redirect(url_for('private.rate_artwork', artwork_id=artwork_id), code=307)
 
 
+# --- Global Image Serving Routes (for private mode) ---
+@app.route('/image_proxy/<int:artwork_id>')
+def image_proxy(artwork_id):
+    """Proxy for serving artwork images - global route for private mode"""
+    db = get_db()
+    artwork = db.execute("SELECT file_path FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
+    if artwork and os.path.exists(artwork['file_path']):
+        return send_file(artwork['file_path'])
+    else:
+        abort(404)
+
+
+@app.route('/thumbnail/<int:artwork_id>')
+def thumbnail(artwork_id):
+    """Serve thumbnail images - global route for private mode"""
+    import utils
+    db = get_db()
+    artwork = db.execute("SELECT thumbnail_filename FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
+    
+    if not artwork:
+        abort(404)
+    
+    if artwork['thumbnail_filename']:
+        thumbnail_path = os.path.join(utils.THUMBNAIL_DIR, artwork['thumbnail_filename'])
+        if os.path.exists(thumbnail_path):
+            return send_from_directory(utils.THUMBNAIL_DIR, artwork['thumbnail_filename'])
+    
+    abort(404)
+
+
 # --- Helper function ---
 def get_distinct_values(column_name):
     db = get_db()
@@ -258,17 +288,6 @@ def api_statistics(stat_type):
     return jsonify({'success': True, 'data': data})
 
 
-
-
-
-@app.route('/image_proxy/<int:artwork_id>')
-def image_proxy(artwork_id):
-    db = get_db()
-    artwork = db.execute("SELECT file_path FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
-    if artwork and os.path.exists(artwork['file_path']):
-        return send_file(artwork['file_path'])
-    else:
-        abort(404)
 
 # --- NEW: Route to handle classification change ---
 # --- API Endpoints for Autocomplete ---

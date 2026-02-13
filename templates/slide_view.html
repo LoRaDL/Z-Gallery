@@ -56,8 +56,13 @@
                 {% else %}
                 <div class="image-aspect-container">
                 {% endif %}
+                    {% if is_private %}
                     <img src="{{ url_for('static', filename='thumbnails/' + artwork.thumbnail_filename) }}" alt="{{ artwork.title or artwork.file_name }}" class="slide-thumbnail">
                     <img src="{{ url_for('image_proxy', artwork_id=artwork.id) }}" alt="{{ artwork.title or artwork.file_name }}" id="slide-image" class="slide-full-image">
+                    {% else %}
+                    <img src="{{ mode_url_for('thumbnail', artwork_id=artwork.id) }}" alt="{{ artwork.title or artwork.file_name }}" class="slide-thumbnail">
+                    <img src="{{ mode_url_for('image_proxy', artwork_id=artwork.id) }}" alt="{{ artwork.title or artwork.file_name }}" id="slide-image" class="slide-full-image">
+                    {% endif %}
                 </div>
             </div>
 

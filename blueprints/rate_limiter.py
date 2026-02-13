@@ -84,7 +84,7 @@ class RateLimiter:
 _rate_limiter = RateLimiter()
 
 
-def rate_limit(limit=100, window=3600, per='ip'):
+def rate_limit(limit=1000, window=3600, per='ip'):
     """
     Decorator to apply rate limiting to a route.
     

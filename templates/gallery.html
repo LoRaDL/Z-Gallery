@@ -39,6 +39,7 @@
     <span class="separator">|</span>
 
     <!-- Classification Group -->
+    {% if is_private %}
     <span class="filter-label">Class:</span>
     <a href="{{ mode_url_for('gallery', **generate_url_params('classification_filter', 'unspecified')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'unspecified' }}">Unspecified</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('classification_filter', 'sfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'sfw' }}">SFW</a>
@@ -46,6 +47,7 @@
     <a href="{{ mode_url_for('gallery', **generate_url_params('classification_filter', 'nsfw')) }}" class="{{ 'active' if current_filters.get('classification_filter') == 'nsfw' }}">NSFW</a>
 
     <span class="separator">|</span>
+    {% endif %}
 
     <!-- Category Group -->
     <span class="filter-label">Category:</span>
@@ -123,8 +125,14 @@
                                          loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
                                          {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
                                          decoding="async">
+                                {% elif is_private %}
+                                    <img src="{{ url_for('thumbnail', artwork_id=art.id) }}" 
+                                         alt="{{ art.title or art.file_name }}" 
+                                         loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
+                                         {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
+                                         decoding="async">
                                 {% else %}
-                                    <img src="{{ url_for('static', filename='thumbnails/' + (art.thumbnail_filename or 'default.jpg')) }}" 
+                                    <img src="{{ mode_url_for('thumbnail', artwork_id=art.id) }}" 
                                          alt="{{ art.title or art.file_name }}" 
                                          loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
                                          {% if loop.index <= 4 %}fetchpriority="high"{% endif %}

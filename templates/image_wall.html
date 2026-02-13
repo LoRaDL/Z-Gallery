@@ -326,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         cardDiv.innerHTML = `
             <a href="${modeUrlPrefix}/artwork/${art.id}#page-top" class="card-image-link">
-                <img src="/static/thumbnails/${art.thumbnail_filename}" 
+                <img src="${isPrivate ? '/thumbnail/' + art.id : modeUrlPrefix + '/thumbnail/' + art.id}" 
                      alt="${art.title}" 
                      loading="lazy"
                      class="${blurClass}"

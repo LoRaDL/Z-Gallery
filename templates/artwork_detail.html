@@ -2,7 +2,11 @@
 {% block content %}
     <div class="detail-container">
         <div class="detail-image">
+            {% if is_private %}
             <img src="{{ url_for('image_proxy', artwork_id=artwork.id) }}" alt="{{ artwork.title or artwork.file_name }}">
+            {% else %}
+            <img src="{{ mode_url_for('image_proxy', artwork_id=artwork.id) }}" alt="{{ artwork.title or artwork.file_name }}">
+            {% endif %}
         </div>
         <div class="detail-info">
             <h2 class="artwork-title editable-field" data-field="title">{{ artwork.title or 'Untitled' }}</h2>
@@ -119,7 +123,11 @@
                 <div class="series-thumbnails">
                     {% for series_artwork in series_artworks %}
                     <a href="{{ mode_url_for('artwork_detail', artwork_id=series_artwork.id) }}" class="series-thumbnail">
-                        <img src="{{ url_for('image_proxy', artwork_id=series_artwork.id) }}" alt="{{ series_artwork.title or series_artwork.file_name }}">
+                        {% if is_private %}
+                        <img src="{{ url_for('thumbnail', artwork_id=series_artwork.id) }}" alt="{{ series_artwork.title or series_artwork.file_name }}">
+                        {% else %}
+                        <img src="{{ mode_url_for('thumbnail', artwork_id=series_artwork.id) }}" alt="{{ series_artwork.title or series_artwork.file_name }}">
+                        {% endif %}
                     </a>
                     {% endfor %}
                 </div>

@@ -63,7 +63,7 @@ def inject_url_helpers():
             'api_get_similar_ids', 'api_delete_artwork', 'api_get_similar_ids_by_id',
             'find_similar', 'api_fetch_metadata', 'temp_image', 'api_update_artwork_field',
             'api_get_next_image', 'api_get_previous_image',
-            'comics_thumbnail', 'comic_page', 'image_proxy',
+            'comics_thumbnail',
             'static'
         ]
         

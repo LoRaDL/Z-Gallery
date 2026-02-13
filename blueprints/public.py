@@ -71,7 +71,7 @@ def get_aspect_ratios_db():
 
 @public_bp.route('/')
 @public_bp.route('/gallery')
-@rate_limit(limit=100, window=3600)  # 100 requests per hour
+@rate_limit(limit=1000, window=3600)  # 100 requests per hour
 def gallery():
     """Public mode gallery page - read-only"""
     from blueprints.security import validate_query_params
@@ -79,6 +79,11 @@ def gallery():
     db = get_db_readonly()
     
     filters = request.args.to_dict()
+    
+    # Apply forced filters for public mode (not visible in URL)
+    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
+        for key, value in config.PUBLIC_MODE_FORCED_FILTERS.items():
+            filters[key] = value
     
     # Validate query parameters
     validate_query_params(filters)
@@ -151,6 +156,15 @@ def artwork_detail(artwork_id):
     if artwork is None:
         abort(404)
     
+    # Apply content filtering based on PUBLIC_MODE_FORCED_FILTERS
+    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
+        classification_filter = config.PUBLIC_MODE_FORCED_FILTERS.get('classification_filter')
+        if classification_filter:
+            # Check if artwork meets the filter criteria
+            artwork_classification = artwork['classification'] or 'unspecified'
+            if classification_filter == 'sfw' and artwork_classification != 'sfw':
+                abort(403, description="Content not available in public mode")
+    
     # Query series artworks
     import re
     series_artworks = []
@@ -175,7 +189,7 @@ def artwork_detail(artwork_id):
 
 
 @public_bp.route('/slide_view')
-@rate_limit(limit=100, window=3600)  # 100 requests per hour
+@rate_limit(limit=1000, window=3600)  # 100 requests per hour
 def slide_view():
     """Public mode slide view - read-only"""
     db = get_db_readonly()
@@ -452,6 +466,178 @@ def artist_ranking_noscript():
     return render_template('artist_ranking_noscript.html', artist_ranking=artist_ranking, current_filters={})
 
 
+# --- API Routes ---
+
+@public_bp.route('/api/statistics/<stat_type>')
+@rate_limit(limit=100, window=3600)  # 100 requests per hour
+def api_statistics(stat_type):
+    """Statistics API endpoint - public mode with content filtering"""
+    from flask import jsonify
+    db = get_db_readonly()
+    
+    # Build WHERE clause for content filtering
+    where_clause = ""
+    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
+        classification_filter = config.PUBLIC_MODE_FORCED_FILTERS.get('classification_filter')
+        if classification_filter == 'sfw':
+            where_clause = "WHERE (classification = 'sfw' OR classification IS NULL)"
+    
+    if stat_type == 'rating':
+        query = f"""
+        SELECT 
+            rating as rating_value, 
+            COUNT(*) as count 
+        FROM artworks 
+        {where_clause}
+        {'AND' if where_clause else 'WHERE'} rating IS NOT NULL
+        GROUP BY rating_value 
+        ORDER BY rating_value DESC
+        """
+        rows = db.execute(query).fetchall()
+        data = [{'label': f'{row["rating_value"]}', 'value': row['count']} for row in rows]
+        
+    elif stat_type == 'artist-works':
+        query = f"""
+        SELECT 
+            artist, 
+            COUNT(*) as count 
+        FROM artworks 
+        {where_clause}
+        GROUP BY artist 
+        ORDER BY count DESC
+        """
+        rows = db.execute(query).fetchall()
+        data = [{'label': row['artist'] or 'Unknown', 'value': row['count']} for row in rows]
+        
+    elif stat_type == 'artist-stars':
+        query = f"""
+        SELECT 
+            artist, 
+            SUM(rating - 5) as total_stars 
+        FROM artworks 
+        {where_clause}
+        {'AND' if where_clause else 'WHERE'} rating IS NOT NULL
+        GROUP BY artist 
+        ORDER BY total_stars DESC
+        """
+        rows = db.execute(query).fetchall()
+        data = [{'label': row['artist'] or 'Unknown', 'value': row['total_stars']} for row in rows]
+        
+    elif stat_type == 'artist-average':
+        query = f"""
+        SELECT 
+            artist, 
+            ROUND(AVG(rating - 5), 2) as average_rating
+        FROM artworks 
+        {where_clause}
+        {'AND' if where_clause else 'WHERE'} rating IS NOT NULL
+        GROUP BY artist 
+        ORDER BY average_rating DESC
+        """
+        rows = db.execute(query).fetchall()
+        data = [{'label': row['artist'] or 'Unknown', 'value': float(row['average_rating'])} for row in rows]
+        
+    elif stat_type == 'artist-weighted':
+        query = f"""
+        SELECT 
+            artist, 
+            ROUND(AVG(rating - 5), 2) as average_rating,
+            COUNT(*) as work_count
+        FROM artworks 
+        {where_clause}
+        {'AND' if where_clause else 'WHERE'} rating IS NOT NULL
+        GROUP BY artist 
+        ORDER BY average_rating DESC
+        """
+        rows = db.execute(query).fetchall()
+        import math
+        data = [{'label': row['artist'] or 'Unknown', 'value': float(row['average_rating'] * math.log(row['work_count'] + 1))} for row in rows]
+        data.sort(key=lambda x: x['value'], reverse=True)
+        
+    else:
+        return jsonify({'success': False, 'error': 'Invalid statistic type'}), 400
+    
+    return jsonify({'success': True, 'data': data})
+
+
+# --- Image Serving Routes with Content Filtering ---
+
+@public_bp.route('/image_proxy/<int:artwork_id>', endpoint='image_proxy')
+@rate_limit(limit=1000, window=3600)  # 100 requests per hour
+def public_image_proxy(artwork_id):
+    """Proxy for serving artwork images - public mode with content filtering"""
+    from blueprints.security import validate_artwork_id
+    from flask import send_file
+    
+    # Validate artwork ID
+    validate_artwork_id(artwork_id)
+    
+    db = get_db_readonly()
+    
+    # Check if artwork exists and get its classification
+    artwork = db.execute(
+        "SELECT file_path, classification FROM artworks WHERE id = ?", 
+        (artwork_id,)
+    ).fetchone()
+    
+    if not artwork:
+        abort(404, description="Artwork not found")
+    
+    # Apply content filtering based on PUBLIC_MODE_FORCED_FILTERS
+    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
+        classification_filter = config.PUBLIC_MODE_FORCED_FILTERS.get('classification_filter')
+        if classification_filter:
+            # Check if artwork meets the filter criteria
+            artwork_classification = artwork['classification'] or 'unspecified'
+            if classification_filter == 'sfw' and artwork_classification != 'sfw':
+                abort(403, description="Content not available in public mode")
+    
+    # Serve the file if it exists
+    if artwork['file_path'] and os.path.exists(artwork['file_path']):
+        return send_file(artwork['file_path'])
+    else:
+        abort(404, description="Image file not found")
+
+
+@public_bp.route('/thumbnail/<int:artwork_id>', endpoint='thumbnail')
+@rate_limit(limit=1000, window=3600)  # 100 requests per hour
+def public_thumbnail(artwork_id):
+    """Serve thumbnail images - public mode with content filtering"""
+    from blueprints.security import validate_artwork_id
+    from flask import send_from_directory
+    
+    # Validate artwork ID
+    validate_artwork_id(artwork_id)
+    
+    db = get_db_readonly()
+    
+    # Check if artwork exists and get its classification and thumbnail
+    artwork = db.execute(
+        "SELECT thumbnail_filename, classification FROM artworks WHERE id = ?", 
+        (artwork_id,)
+    ).fetchone()
+    
+    if not artwork:
+        abort(404, description="Artwork not found")
+    
+    # Apply content filtering based on PUBLIC_MODE_FORCED_FILTERS
+    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
+        classification_filter = config.PUBLIC_MODE_FORCED_FILTERS.get('classification_filter')
+        if classification_filter:
+            # Check if artwork meets the filter criteria
+            artwork_classification = artwork['classification'] or 'unspecified'
+            if classification_filter == 'sfw' and artwork_classification != 'sfw':
+                abort(403, description="Content not available in public mode")
+    
+    # Serve the thumbnail if it exists
+    if artwork['thumbnail_filename']:
+        thumbnail_path = os.path.join(config.THUMBNAIL_DIR, artwork['thumbnail_filename'])
+        if os.path.exists(thumbnail_path):
+            return send_from_directory(config.THUMBNAIL_DIR, artwork['thumbnail_filename'])
+    
+    abort(404, description="Thumbnail not found")
+
+
 # --- Error Handlers ---
 
 @public_bp.errorhandler(404)
@@ -459,7 +645,7 @@ def public_not_found(error):
     """Handle 404 errors in public mode"""
     from logger import logger
     logger.app_logger.warning(f"404 error in public mode: {request.url}")
-    return render_template('errors/404.html', mode='public'), 404
+    return render_template('errors/404.html', mode='public', current_filters={}), 404
 
 
 @public_bp.errorhandler(403)
@@ -468,7 +654,7 @@ def public_forbidden(error):
     from logger import logger
     logger.app_logger.warning(f"403 error in public mode: {request.url}")
     # Don't reveal system information in error message
-    return render_template('errors/403.html', mode='public'), 403
+    return render_template('errors/403.html', mode='public', current_filters={}), 403
 
 
 @public_bp.errorhandler(500)
@@ -477,7 +663,7 @@ def public_internal_error(error):
     from logger import logger
     logger.log_error(f"500 error in public mode: {str(error)}", exc_info=True)
     # Don't reveal system information in error message
-    return render_template('errors/500.html', mode='public'), 500
+    return render_template('errors/500.html', mode='public', current_filters={}), 500
 
 
 @public_bp.errorhandler(429)
@@ -485,7 +671,7 @@ def public_rate_limit_error(error):
     """Handle 429 rate limit errors in public mode"""
     from logger import logger
     logger.app_logger.warning(f"429 rate limit error in public mode: {request.url}")
-    return render_template('errors/429.html', mode='public'), 429
+    return render_template('errors/429.html', mode='public', current_filters={}), 429
 
 
 @public_bp.errorhandler(400)
@@ -493,4 +679,4 @@ def public_bad_request(error):
     """Handle 400 bad request errors in public mode"""
     from logger import logger
     logger.app_logger.warning(f"400 bad request in public mode: {request.url}")
-    return render_template('errors/400.html', mode='public'), 400
+    return render_template('errors/400.html', mode='public', current_filters={}), 400

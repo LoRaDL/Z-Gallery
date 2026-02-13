@@ -793,17 +793,6 @@ def api_statistics(stat_type):
     return jsonify({'success': True, 'data': data})
 
 
-@private_bp.route('/image_proxy/<int:artwork_id>')
-def image_proxy(artwork_id):
-    """Proxy for serving artwork images"""
-    db = get_db()
-    artwork = db.execute("SELECT file_path FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
-    if artwork and os.path.exists(artwork['file_path']):
-        return send_file(artwork['file_path'])
-    else:
-        abort(404)
-
-
 @private_bp.route('/api/artists')
 def api_artists():
     """API endpoint for artist autocomplete"""
@@ -1044,7 +1033,7 @@ def private_not_found(error):
     """Handle 404 errors in private mode"""
     from logger import logger
     logger.app_logger.warning(f"404 error in private mode: {request.url}")
-    return render_template('errors/404.html', mode='private'), 404
+    return render_template('errors/404.html', mode='private', current_filters={}), 404
 
 
 @private_bp.errorhandler(403)
@@ -1053,7 +1042,7 @@ def private_forbidden(error):
     from logger import logger
     logger.app_logger.warning(f"403 error in private mode: {request.url}")
     # Don't reveal system information in error message
-    return render_template('errors/403.html', mode='private'), 403
+    return render_template('errors/403.html', mode='private', current_filters={}), 403
 
 
 @private_bp.errorhandler(500)
@@ -1062,7 +1051,7 @@ def private_internal_error(error):
     from logger import logger
     logger.log_error(f"500 error in private mode: {str(error)}", exc_info=True)
     # Don't reveal system information in error message
-    return render_template('errors/500.html', mode='private'), 500
+    return render_template('errors/500.html', mode='private', current_filters={}), 500
 
 
 @private_bp.errorhandler(429)
@@ -1070,7 +1059,7 @@ def private_rate_limit_error(error):
     """Handle 429 rate limit errors in private mode"""
     from logger import logger
     logger.app_logger.warning(f"429 rate limit error in private mode: {request.url}")
-    return render_template('errors/429.html', mode='private'), 429
+    return render_template('errors/429.html', mode='private', current_filters={}), 429
 
 
 @private_bp.errorhandler(400)
@@ -1078,4 +1067,4 @@ def private_bad_request(error):
     """Handle 400 bad request errors in private mode"""
     from logger import logger
     logger.app_logger.warning(f"400 bad request in private mode: {request.url}")
-    return render_template('errors/400.html', mode='private'), 400
+    return render_template('errors/400.html', mode='private', current_filters={}), 400
