@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/slide_view.css') }}">
+<link rel="stylesheet" href="{{ mode_url_for('static', filename='css/slide_view.css') }}">
 
 <div class="slide-view-container">
     <!-- 筛选控件 -->
@@ -108,5 +108,5 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/slide_view.js') }}"></script>
+<script src="{{ mode_url_for('static', filename='js/slide_view.js') }}"></script>
 {% endblock %}

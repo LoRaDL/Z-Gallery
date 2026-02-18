@@ -15,12 +15,12 @@
     <meta name="theme-color" content="#1a1a1a">
     <meta name="msapplication-TileColor" content="#1a1a1a">
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/image_search.css') }}">
+    <link rel="stylesheet" href="{{ mode_url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ mode_url_for('static', filename='css/image_search.css') }}">
     {% if is_private %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/private.css') }}">
+    <link rel="stylesheet" href="{{ mode_url_for('static', filename='css/private.css') }}">
     {% else %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/public.css') }}">
+    <link rel="stylesheet" href="{{ mode_url_for('static', filename='css/public.css') }}">
     {% endif %}
 </head>
 <body class="mode-{{ mode }}">
@@ -76,12 +76,12 @@
     <!-- Hamburger Menu Overlay -->
     <div class="menu-overlay" id="menu-overlay"></div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/image_search.js') }}"></script>
+    <script src="{{ mode_url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ mode_url_for('static', filename='js/image_search.js') }}"></script>
     {% if is_private %}
-    <script src="{{ url_for('static', filename='js/private.js') }}"></script>
+    <script src="{{ mode_url_for('static', filename='js/private.js') }}"></script>
     {% else %}
-    <script src="{{ url_for('static', filename='js/public.js') }}"></script>
+    <script src="{{ mode_url_for('static', filename='js/public.js') }}"></script>
     {% endif %}
     <script>
         // Hamburger menu functionality

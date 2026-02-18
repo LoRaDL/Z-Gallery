@@ -34,6 +34,64 @@ register_context_processors(app)
 app.register_blueprint(private_bp)
 app.register_blueprint(public_bp)
 
+
+# --- iOS Safari Anchor Fix Middleware ---
+@app.before_request
+def fix_ios_safari_anchor_bug():
+    """
+    Fix iOS Safari bug where URL anchors (#page-top, #image-top) are sent to server.
+    
+    iOS Safari sometimes incorrectly includes URL fragments (anchors) in the request path,
+    causing 404 errors. This middleware detects such requests and redirects to the correct URL.
+    
+    Example:
+        Request: /public/artwork/123#page-top
+        Redirect to: /public/artwork/123
+        (Browser will then apply the #page-top anchor client-side)
+    """
+    # List of known anchors that should be client-side only
+    known_anchors = ['#page-top', '#image-top', '#top']
+    
+    # Check if the request path contains any of these anchors
+    for anchor in known_anchors:
+        if anchor in request.path:
+            # Extract the clean path without the anchor
+            clean_path = request.path.split(anchor)[0]
+            
+            # Build the clean URL with query string
+            # Note: request.query_string is already properly formatted
+            if request.query_string:
+                clean_url = f"{clean_path}?{request.query_string.decode('utf-8')}"
+            else:
+                clean_url = clean_path
+            
+            # Log the redirect for debugging
+            logger.logger.app_logger.info(
+                f"iOS Safari anchor fix: Redirecting from {request.path} to {clean_url}"
+            )
+            
+            # Redirect to the clean URL (302 temporary redirect)
+            # The browser will then apply the anchor client-side
+            return redirect(clean_url, code=302)
+        
+        # Also check if anchor is in the full URL (path + query string)
+        full_url = request.full_path.rstrip('?')
+        if anchor in full_url:
+            # Split on the anchor and take the first part
+            clean_url = full_url.split(anchor)[0]
+            
+            # Log the redirect for debugging
+            logger.logger.app_logger.info(
+                f"iOS Safari anchor fix: Redirecting from {full_url} to {clean_url}"
+            )
+            
+            # Redirect to the clean URL
+            return redirect(clean_url, code=302)
+    
+    # No anchor found, continue normally
+    return None
+
+
 # --- Database Connection Handling ---
 def get_db():
     db = getattr(g, '_database', None)

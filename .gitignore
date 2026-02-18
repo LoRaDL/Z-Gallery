@@ -3,6 +3,7 @@ api_keys.py
 *.key
 *.pem
 *.env
+*.txt
 
 # 数据库文件
 *.db

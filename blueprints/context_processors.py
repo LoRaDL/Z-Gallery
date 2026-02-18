@@ -56,6 +56,11 @@ def inject_url_helpers():
         if '.' in endpoint:
             return url_for(endpoint, **values)
         
+        # Handle static files specially in public mode
+        if endpoint == 'static' and current_mode == 'public':
+            # In public mode, serve static files through the public blueprint
+            return url_for('public.serve_static', **values)
+        
         # List of endpoints that should NOT be prefixed (they're in main app, not blueprints)
         non_blueprint_endpoints = [
             'monitoring', 'api_monitoring', 'api_logs', 'api_logs_download',
