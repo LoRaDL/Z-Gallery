@@ -36,60 +36,46 @@ app.register_blueprint(public_bp)
 
 
 # --- iOS Safari Anchor Fix Middleware ---
-@app.before_request
-def fix_ios_safari_anchor_bug():
+class AnchorFixMiddleware:
     """
-    Fix iOS Safari bug where URL anchors (#page-top, #image-top) are sent to server.
+    WSGI middleware to fix iOS Safari bug where URL anchors are sent to server.
     
-    iOS Safari sometimes incorrectly includes URL fragments (anchors) in the request path,
-    causing 404 errors. This middleware detects such requests and redirects to the correct URL.
+    This middleware intercepts requests at the WSGI level (before Flask routing)
+    and removes any URL fragments (anchors like #page-top) from the request path.
     
-    Example:
-        Request: /public/artwork/123#page-top
-        Redirect to: /public/artwork/123
-        (Browser will then apply the #page-top anchor client-side)
+    This is necessary because iOS Safari sometimes incorrectly includes URL fragments
+    in the HTTP request, which should never happen according to HTTP spec.
     """
-    # List of known anchors that should be client-side only
-    known_anchors = ['#page-top', '#image-top', '#top']
     
-    # Check if the request path contains any of these anchors
-    for anchor in known_anchors:
-        if anchor in request.path:
-            # Extract the clean path without the anchor
-            clean_path = request.path.split(anchor)[0]
-            
-            # Build the clean URL with query string
-            # Note: request.query_string is already properly formatted
-            if request.query_string:
-                clean_url = f"{clean_path}?{request.query_string.decode('utf-8')}"
-            else:
-                clean_url = clean_path
-            
-            # Log the redirect for debugging
-            logger.logger.app_logger.info(
-                f"iOS Safari anchor fix: Redirecting from {request.path} to {clean_url}"
-            )
-            
-            # Redirect to the clean URL (302 temporary redirect)
-            # The browser will then apply the anchor client-side
-            return redirect(clean_url, code=302)
+    def __init__(self, app):
+        self.app = app
+        self.known_anchors = ['#page-top', '#image-top', '#top']
+    
+    def __call__(self, environ, start_response):
+        # Get the request path
+        path = environ.get('PATH_INFO', '')
         
-        # Also check if anchor is in the full URL (path + query string)
-        full_url = request.full_path.rstrip('?')
-        if anchor in full_url:
-            # Split on the anchor and take the first part
-            clean_url = full_url.split(anchor)[0]
-            
-            # Log the redirect for debugging
-            logger.logger.app_logger.info(
-                f"iOS Safari anchor fix: Redirecting from {full_url} to {clean_url}"
-            )
-            
-            # Redirect to the clean URL
-            return redirect(clean_url, code=302)
-    
-    # No anchor found, continue normally
-    return None
+        # Check if path contains any known anchors
+        for anchor in self.known_anchors:
+            if anchor in path:
+                # Clean the path by removing the anchor
+                clean_path = path.split(anchor)[0]
+                
+                # Update the environ with the clean path
+                environ['PATH_INFO'] = clean_path
+                
+                # Log the fix for debugging
+                logger.logger.app_logger.info(
+                    f"iOS Safari anchor fix: Cleaned path from {path} to {clean_path}"
+                )
+                break
+        
+        # Continue with the cleaned request
+        return self.app(environ, start_response)
+
+
+# Apply the middleware
+app.wsgi_app = AnchorFixMiddleware(app.wsgi_app)
 
 
 # --- Database Connection Handling ---
@@ -261,93 +247,21 @@ def legacy_comic_reader(comic_id):
 
 
 
+# --- API Endpoints for Statistics (Backward Compatibility) ---
 @app.route('/api/statistics/<stat_type>')
 def api_statistics(stat_type):
-    db = get_db()
+    """
+    Global statistics API endpoint for backward compatibility.
+    Redirects to private mode statistics API by default.
     
-    if stat_type == 'rating':
-        # 获取每个评分的作品数量，不包括未评分作品
-        query = """
-        SELECT 
-            rating as rating_value, 
-            COUNT(*) as count 
-        FROM artworks 
-        WHERE rating IS NOT NULL
-        GROUP BY rating_value 
-        ORDER BY rating_value DESC
-        """
-        rows = db.execute(query).fetchall()
-        # 转换为图表需要的格式
-        data = [{'label': f'{row["rating_value"]}', 'value': row['count']} for row in rows]
-        
-    elif stat_type == 'artist-works':
-        # 获取每个作者的作品数量
-        query = """
-        SELECT 
-            artist, 
-            COUNT(*) as count 
-        FROM artworks 
-        GROUP BY artist 
-        ORDER BY count DESC
-        """
-        rows = db.execute(query).fetchall()
-        data = [{'label': row['artist'] or 'Unknown', 'value': row['count']} for row in rows]
-        
-    elif stat_type == 'artist-stars':
-        # 获取每个作者获得的星星总数（评分-5的总和）
-        query = """
-        SELECT 
-            artist, 
-            SUM(rating - 5) as total_stars 
-        FROM artworks 
-        WHERE rating IS NOT NULL
-        GROUP BY artist 
-        ORDER BY total_stars DESC
-        """
-        rows = db.execute(query).fetchall()
-        data = [{'label': row['artist'] or 'Unknown', 'value': row['total_stars']} for row in rows]
-        
-    elif stat_type == 'artist-average':
-        # 获取每个作者的平均分（评分-5的平均值），不包括未评分作品
-        query = """
-        SELECT 
-            artist, 
-            ROUND(AVG(rating - 5), 2) as average_rating
-        FROM artworks 
-        WHERE rating IS NOT NULL
-        GROUP BY artist 
-        ORDER BY average_rating DESC
-        """
-        rows = db.execute(query).fetchall()
-        data = [{'label': row['artist'] or 'Unknown', 'value': float(row['average_rating'])} for row in rows]
-        
-    elif stat_type == 'artist-weighted':
-        # 获取每个作者的综合评分，综合考虑平均分和作品数量
-        query = """
-        SELECT 
-            artist, 
-            ROUND(AVG(rating - 5), 2) as average_rating,
-            COUNT(*) as work_count
-        FROM artworks 
-        WHERE rating IS NOT NULL
-        GROUP BY artist 
-        ORDER BY average_rating DESC
-        """
-        rows = db.execute(query).fetchall()
-        # 计算综合评分：(平均分-5) * log(作品数量 + 1)
-        import math
-        data = [{'label': row['artist'] or 'Unknown', 'value': float(row['average_rating'] * math.log(row['work_count'] + 1))} for row in rows]
-        # 按综合评分排序
-        data.sort(key=lambda x: x['value'], reverse=True)
-        
-    else:
-        return jsonify({'success': False, 'error': 'Invalid statistic type'}), 400
-    
-    return jsonify({'success': True, 'data': data})
+    Note: This is only used as a fallback. Proper access should be through:
+    - /private/api/statistics/<stat_type> for private mode
+    - /public/api/statistics/<stat_type> for public mode
+    """
+    # Default to private mode for backward compatibility
+    return redirect(url_for('private.api_statistics', stat_type=stat_type))
 
 
-
-# --- NEW: Route to handle classification change ---
 # --- API Endpoints for Autocomplete ---
 @app.route('/api/artists')
 def api_artists():

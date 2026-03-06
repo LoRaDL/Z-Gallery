@@ -1,53 +1,28 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistics - Zootopia Fanart Gallery</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/statistics.css') }}">
-</head>
-<body>
-    <header>
-        <h1><a href="{{ mode_url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
-        <nav>
-            <a href="{{ mode_url_for('categories_list') }}">Categories</a>
-            <a href="{{ mode_url_for('gallery', sort='random') }}">Random</a>
-            <a href="#" id="image-search-trigger">Search by Image</a>
-            {% if is_private %}
-            <a href="{{ mode_url_for('add_artwork_page') }}">Add Artwork</a>
-            {% endif %}
-            <a href="{{ mode_url_for('statistics') }}" class="active">Statistics</a>
-        </nav>
-        <form class="search-form" action="{{ mode_url_for('gallery') }}" method="get">
-            <input type="text" name="q" placeholder="Search..." value="{{ current_filters.q or '' }}">
-            <button type="submit">Go</button>
-        </form>
-    </header>
-    <main id="page-top">
-        <h2>Statistics</h2>
-        <div class="controls">
-            <label for="statistic-type">Select Statistic:</label>
-            <select id="statistic-type">
-                <option value="rating">Rating Distribution</option>
-            <option value="artist-works">Artist Work Count</option>
-            <option value="artist-stars">Artist Star Count</option>
-            <option value="artist-average">Artist Average Rating</option>
-            <option value="artist-weighted">Artist Weighted Score</option>
-            </select>
-        </div>
-        <div class="chart-container">
-            <canvas id="statistics-chart"></canvas>
-        </div>
-        <div class="noscript-link">
-            <p><a href="{{ mode_url_for('artist_ranking_noscript') }}">View Artist Ranking (No JavaScript)</a></p>
-        </div>
-    </main>
-    <footer>
-        <p>A Personal Collection</p>
-    </footer>
+{% extends "layout.html" %}
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/statistics.js') }}"></script>
-</body>
-</html>
+{% block content %}
+<h2>Statistics</h2>
+<div class="controls">
+    <label for="statistic-type">Select Statistic:</label>
+    <select id="statistic-type">
+        {% if is_private %}
+        <option value="rating">Rating Distribution</option>
+        <option value="artist-works">Artist Work Count</option>
+        <option value="artist-stars">Artist Star Count</option>
+        <option value="artist-average">Artist Average Rating</option>
+        <option value="artist-weighted">Artist Weighted Score</option>
+        {% else %}
+        <option value="artist-weighted">Recommendation Score</option>
+        <option value="artist-works">Artist Work Count</option>
+        {% endif %}
+    </select>
+</div>
+<div class="chart-container">
+    <canvas id="statistics-chart"></canvas>
+</div>
+<div class="noscript-link">
+    <p><a href="{{ mode_url_for('artist_ranking_noscript') }}">View Artist Ranking (No JavaScript)</a></p>
+</div>
+
+<script src="{{ mode_url_for('static', filename='js/statistics.js') }}"></script>
+{% endblock %}

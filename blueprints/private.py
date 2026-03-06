@@ -137,11 +137,7 @@ def gallery():
     try:
         ar_db = get_aspect_ratios_db()
         artwork_ids = [art['id'] for art in artworks]
-        if artwork_ids:
-            placeholders = ','.join('?' * len(artwork_ids))
-            ar_query = f"SELECT artwork_id, aspect_ratio FROM aspect_ratios WHERE artwork_id IN ({placeholders})"
-            ar_results = ar_db.execute(ar_query, artwork_ids).fetchall()
-            aspect_ratios = {row['artwork_id']: row['aspect_ratio'] for row in ar_results}
+        aspect_ratios = utils.get_aspect_ratios(ar_db, artwork_ids)
     except Exception:
         pass
     
@@ -297,15 +293,12 @@ def image_wall():
     main_query = "SELECT * " + base_query
     artworks = db.execute(main_query, params).fetchall()
     
+    # Get aspect ratios for waterfall layout
     aspect_ratios = {}
     try:
         ar_db = get_aspect_ratios_db()
         artwork_ids = [art['id'] for art in artworks]
-        if artwork_ids:
-            placeholders = ','.join('?' * len(artwork_ids))
-            ar_query = f"SELECT artwork_id, aspect_ratio FROM aspect_ratios WHERE artwork_id IN ({placeholders})"
-            ar_results = ar_db.execute(ar_query, artwork_ids).fetchall()
-            aspect_ratios = {row['artwork_id']: row['aspect_ratio'] for row in ar_results}
+        aspect_ratios = utils.get_aspect_ratios(ar_db, artwork_ids)
     except Exception:
         pass
     

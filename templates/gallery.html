@@ -63,7 +63,6 @@
     <!-- Rating Group -->
     <span class="filter-label">Rating:</span>
     <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
-    <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', '2_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '2_plus' }}">2★+</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>
 </div>
@@ -193,7 +192,7 @@
 function generateSquirclePath(width, height, radius) {
     // 固定半径，避免长方形变形
     const r = Math.min(radius, width / 2, height / 2);
-    const n = 5; // Apple 使用的超椭圆指数
+    const n = 4;
     const steps = 30; // 增加点数以提高平滑度
     
     // 计算超椭圆四分之一圆的点
@@ -269,10 +268,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 为单个卡片应用超椭圆的函数
     function applySquircleToCard(card, index) {
+        // 如果浏览器原生支持 corner-shape: squircle，则跳过 JS 的 clip-path 逻辑
+        if (window.CSS && CSS.supports && (CSS.supports('corner-shape', 'squircle') || CSS.supports('corner-shape: squircle'))) {
+            card.style.clipPath = '';
+            card.style.webkitClipPath = '';
+            card.removeAttribute('data-squircle');
+            return;
+        }
+
         const rect = card.getBoundingClientRect();
         const width = Math.round(rect.width);
         const height = Math.round(rect.height);
-        const radius = 80;
+        const radius = 76; // 统一为 76px (常规圆角则对应 38px)
         
         // 只有当卡片有实际尺寸时才应用
         if (width === 0 || height === 0) {

@@ -183,3 +183,31 @@ def get_random_sort_order(filters):
         return f"((id * {seed}) % 1000000)"
     except ValueError:
         return 'publication_date DESC'
+
+def get_aspect_ratios(ar_db, artwork_ids):
+    """
+    从 aspect_ratios 数据库中分批获取指定 artwork_id 的宽高比。
+    解决 SQLite 999 个参数限制的问题。
+    """
+    aspect_ratios = {}
+    if not artwork_ids:
+        return aspect_ratios
+    
+    # SQLite 默认参数限制通常是 999，这里使用 900 以留出余量
+    batch_size = 900
+    for i in range(0, len(artwork_ids), batch_size):
+        batch = artwork_ids[i:i + batch_size]
+        placeholders = ','.join('?' * len(batch))
+        ar_query = f"SELECT artwork_id, aspect_ratio FROM aspect_ratios WHERE artwork_id IN ({placeholders})"
+        try:
+            ar_results = ar_db.execute(ar_query, batch).fetchall()
+            for row in ar_results:
+                # 兼容 Row 对象和元组
+                if hasattr(row, 'keys'):
+                    aspect_ratios[row['artwork_id']] = row['aspect_ratio']
+                else:
+                    aspect_ratios[row[0]] = row[1]
+        except Exception as e:
+            print(f"Error fetching aspect ratio batch: {e}")
+            
+    return aspect_ratios

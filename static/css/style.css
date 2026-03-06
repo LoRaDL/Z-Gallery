@@ -159,22 +159,42 @@ main {
 
 .card {
     background-color: var(--card-color);
-    /* 移除边框 */
-    /* G2 连续曲率圆角，超椭圆公式 */
-    /* 降级方案：如果 clip-path/mask 不支持，使用普通圆角 */
+    /* Fallback 2: 常规圆角，半径 38px */
     border-radius: 38px;
-    /* clip-path 通过 JavaScript 动态设置 */
+    
+    /* 核心逻辑：
+       1. 优先使用 CSS corner-shape: squircle (半径 76px)
+       2. 不支持则回退到 clip-path 方案 (由 JS 动态计算路径并应用)
+       3. 都不支持则使用常规圆角 (半径 38px)
+    */
+
     overflow: hidden;
     display: flex;
     flex-direction: column;
     break-inside: avoid;
     width: 100%;
     box-sizing: border-box;
+    transition: transform 0.2s ease-out, clip-path 0.2s ease-out, border-radius 0.2s ease-out;
 }
 
 /* 如果 clip-path 已应用，移除降级的 border-radius */
 .card[data-squircle="applied"] {
     border-radius: 0;
+}
+
+/* 优先级最高：CSS Native Squircle */
+@supports (corner-shape: squircle) {
+    .card {
+        border-radius: 76px;
+        corner-shape: squircle;
+    }
+    
+    /* 如果原生支持 squircle，强制覆盖 JS 可能应用过的 clip-path 方案 */
+    .card[data-squircle="applied"] {
+        border-radius: 76px !important;
+        clip-path: none !important;
+        -webkit-clip-path: none !important;
+    }
 }
 
 /* iOS Safari 特殊处理：确保 mask 正确应用 */

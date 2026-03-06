@@ -50,9 +50,70 @@ from PIL import Image
 import config
 import utils
 from blueprints.db_utils import get_db_readonly
+import markdown2
 
 # Configuration
 IMAGES_PER_PAGE = config.IMAGES_PER_PAGE
+
+
+# --- Popup Content Management ---
+
+def load_popup_content(content_type: str, language: str) -> tuple[bool, str]:
+    """
+    Load and render popup content from Markdown files.
+    
+    Args:
+        content_type: Content type ('declaration' or 'terms')
+        language: Language code ('zh' or 'en')
+    
+    Returns:
+        Tuple of (success: bool, content: str)
+        - If success is True, content contains rendered HTML
+        - If success is False, content contains error message
+    
+    Validates: Requirements 2.1, 2.2, 2.3, 2.5, 7.2, 8.1, 8.2
+    """
+    from logger import logger
+    
+    # Validate parameters
+    valid_types = ['declaration', 'terms']
+    valid_langs = ['zh', 'en']
+    
+    if content_type not in valid_types:
+        error_msg = f"Invalid content type: {content_type}"
+        logger.app_logger.error(error_msg)
+        return False, "内容类型无效" if language == 'zh' else "Invalid content type"
+    
+    if language not in valid_langs:
+        error_msg = f"Invalid language: {language}"
+        logger.app_logger.error(error_msg)
+        return False, "语言代码无效" if language == 'zh' else "Invalid language code"
+    
+    # Build file path following naming convention: content/popup/{content_type}_{language}.md
+    file_path = os.path.join('content', 'popup', f'{content_type}_{language}.md')
+    
+    # Read Markdown file
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            markdown_content = f.read()
+    except FileNotFoundError:
+        error_msg = f"Popup content file not found: {file_path}"
+        logger.app_logger.error(error_msg)
+        return False, "内容文件未找到" if language == 'zh' else "Content file not found"
+    except Exception as e:
+        error_msg = f"Error reading popup content file {file_path}: {e}"
+        logger.app_logger.error(error_msg)
+        return False, "内容加载失败" if language == 'zh' else "Failed to load content"
+    
+    # Render Markdown to HTML
+    try:
+        html_content = markdown2.markdown(markdown_content)
+        return True, html_content
+    except Exception as e:
+        # Fallback: return original text wrapped in <pre> tag if rendering fails
+        error_msg = f"Markdown rendering failed for {file_path}: {e}"
+        logger.app_logger.error(error_msg)
+        return True, f"<pre>{markdown_content}</pre>"
 
 
 # --- Database Helper Functions ---
@@ -120,11 +181,7 @@ def gallery():
     try:
         ar_db = get_aspect_ratios_db()
         artwork_ids = [art['id'] for art in artworks]
-        if artwork_ids:
-            placeholders = ','.join('?' * len(artwork_ids))
-            ar_query = f"SELECT artwork_id, aspect_ratio FROM aspect_ratios WHERE artwork_id IN ({placeholders})"
-            ar_results = ar_db.execute(ar_query, artwork_ids).fetchall()
-            aspect_ratios = {row['artwork_id']: row['aspect_ratio'] for row in ar_results}
+        aspect_ratios = utils.get_aspect_ratios(ar_db, artwork_ids)
     except Exception:
         pass
     
@@ -291,19 +348,15 @@ def image_wall():
         filters['seed'] = seed
         filters['columns'] = columns
         return redirect(url_for('public.image_wall', **filters))
-    
     main_query = "SELECT * " + base_query
     artworks = db.execute(main_query, params).fetchall()
     
+    # Get aspect ratios for waterfall layout
     aspect_ratios = {}
     try:
         ar_db = get_aspect_ratios_db()
         artwork_ids = [art['id'] for art in artworks]
-        if artwork_ids:
-            placeholders = ','.join('?' * len(artwork_ids))
-            ar_query = f"SELECT artwork_id, aspect_ratio FROM aspect_ratios WHERE artwork_id IN ({placeholders})"
-            ar_results = ar_db.execute(ar_query, artwork_ids).fetchall()
-            aspect_ratios = {row['artwork_id']: row['aspect_ratio'] for row in ar_results}
+        aspect_ratios = utils.get_aspect_ratios(ar_db, artwork_ids)
     except Exception:
         pass
     
@@ -468,6 +521,95 @@ def artist_ranking_noscript():
 
 # --- API Routes ---
 
+@public_bp.route('/api/popup_content')
+@rate_limit(limit=100, window=3600)
+def api_popup_content():
+    """
+    API endpoint for loading popup content.
+    
+    Query Parameters:
+        type: Content type ('declaration' or 'terms')
+        lang: Language code ('zh' or 'en')
+    
+    Returns:
+        JSON response with:
+        - success: bool
+        - content: str (HTML content if success=True)
+        - error: str (error message if success=False)
+        - type: str (echoed content type)
+        - lang: str (echoed language)
+    
+    Validates: Requirements 2.1, 2.2, 2.3, 8.4
+    """
+    from flask import jsonify
+    from logger import logger
+    
+    # Get query parameters
+    content_type = request.args.get('type')
+    language = request.args.get('lang')
+    
+    # Validate parameters presence
+    if not content_type or not language:
+        logger.app_logger.warning(
+            f"Missing parameters in popup content request: type={content_type}, lang={language}"
+        )
+        return jsonify({
+            'success': False,
+            'error': 'Missing required parameters: type and lang',
+            'type': content_type or '',
+            'lang': language or ''
+        }), 400
+    
+    # Validate parameter values
+    valid_types = ['declaration', 'terms']
+    valid_langs = ['zh', 'en']
+    
+    if content_type not in valid_types:
+        logger.app_logger.warning(
+            f"Invalid content type in popup request: {content_type}"
+        )
+        return jsonify({
+            'success': False,
+            'error': f'Invalid content type. Must be one of: {", ".join(valid_types)}',
+            'type': content_type,
+            'lang': language
+        }), 400
+    
+    if language not in valid_langs:
+        logger.app_logger.warning(
+            f"Invalid language in popup request: {language}"
+        )
+        return jsonify({
+            'success': False,
+            'error': f'Invalid language. Must be one of: {", ".join(valid_langs)}',
+            'type': content_type,
+            'lang': language
+        }), 400
+    
+    # Load content using the helper function
+    success, content = load_popup_content(content_type, language)
+    
+    # Build response
+    response = {
+        'success': success,
+        'type': content_type,
+        'lang': language
+    }
+    
+    if success:
+        response['content'] = content
+        logger.app_logger.info(
+            f"Successfully loaded popup content: type={content_type}, lang={language}"
+        )
+    else:
+        response['error'] = content  # content contains error message when success=False
+        logger.app_logger.error(
+            f"Failed to load popup content: type={content_type}, lang={language}, error={content}"
+        )
+    
+    return jsonify(response)
+
+
 @public_bp.route('/api/statistics/<stat_type>')
 @rate_limit(limit=100, window=3600)
 def api_statistics(stat_type):
@@ -552,12 +694,17 @@ def api_statistics(stat_type):
         rows = db.execute(query).fetchall()
         import math
         data = [{'label': row['artist'] or 'Unknown', 'value': float(row['average_rating'] * math.log(row['work_count'] + 1))} for row in rows]
+        # Filter out results with value <= 0 (only show positive recommendations)
+        data = [item for item in data if item['value'] > 0]
         data.sort(key=lambda x: x['value'], reverse=True)
         
     else:
         return jsonify({'success': False, 'error': 'Invalid statistic type'}), 400
     
     return jsonify({'success': True, 'data': data})
+
+
+
 
 
 # --- Image Serving Routes with Content Filtering ---

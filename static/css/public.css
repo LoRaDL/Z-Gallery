@@ -96,3 +96,10 @@
     pointer-events: none;
     opacity: 0.6;
 }
+
+/* Exception: Allow statistics page select to be interactive */
+.mode-public #statistic-type {
+    pointer-events: auto;
+    opacity: 1;
+    cursor: pointer;
+}

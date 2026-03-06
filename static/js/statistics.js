@@ -52,6 +52,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // 找到最大值用于计算比例
         const maxValue = Math.max(...data.map(item => item.value));
         
+        // 获取当前模式的URL前缀
+        const urlPrefix = window.GALLERY_MODE ? window.GALLERY_MODE.urlPrefix : '';
+        
         // 为每个数据项创建柱状图元素
         data.forEach(item => {
             const barItem = document.createElement('div');
@@ -63,13 +66,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // 根据统计类型决定标签是否可点击
             if (type === 'artist-works' || type === 'artist-stars' || type === 'artist-average' || type === 'artist-weighted') {
                 const link = document.createElement('a');
-                link.href = `${window.location.origin}/?artist=${encodeURIComponent(item.label)}`;
+                link.href = `${urlPrefix}/gallery?artist=${encodeURIComponent(item.label)}`;
                 link.textContent = item.label;
                 label.appendChild(link);
             } else if (type === 'rating') {
                 const link = document.createElement('a');
                 // 修改为使用rating_filter参数进行特定分数筛选
-                link.href = `${window.location.origin}/?rating_filter=${item.label}`;
+                link.href = `${urlPrefix}/gallery?rating_filter=${item.label}`;
                 link.textContent = item.label;
                 label.appendChild(link);
             } else {

@@ -5,6 +5,12 @@
    - is_private: boolean flag for private mode (optional, derived from mode)
 #}
 
+{# In public mode, hide ratings below 5 stars (show as 0/unrated) #}
+{% set display_rating = artwork.rating %}
+{% if is_public and artwork.rating and artwork.rating < 5 %}
+    {% set display_rating = None %}
+{% endif %}
+
 <div class="rating-form">
     {% if is_private %}
         {# Private Mode: Interactive rating with form and clickable buttons #}
@@ -19,11 +25,11 @@
         {# Public Mode: Static rating display only #}
         <div class="rating-display">
             {% for i in range(1, 11) %}
-                <span class="star {{ 'rated' if artwork.rating and i <= artwork.rating }}">
-                    {% if artwork.rating and i <= artwork.rating %}★{% else %}☆{% endif %}
+                <span class="star {{ 'rated' if display_rating and i <= display_rating }}">
+                    {% if display_rating and i <= display_rating %}★{% else %}☆{% endif %}
                 </span>
             {% endfor %}
-            <span class="rating-value">({{ artwork.rating or 'Unrated' }}/10)</span>
+            <span class="rating-value">({{ display_rating or 'Unrated' }}/10)</span>
         </div>
     {% endif %}
 </div>

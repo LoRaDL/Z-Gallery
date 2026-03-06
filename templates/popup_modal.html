@@ -1,0 +1,23 @@
+<!-- 首次访问弹窗模板 -->
+<!-- 需求：5.1, 5.2, 5.3, 5.4 -->
+<div id="first-visit-popup" class="popup-overlay" style="display: none;">
+  <div class="popup-container">
+    <!-- 弹窗头部 -->
+    <div class="popup-header">
+      <h2 id="popup-title">网站声明</h2>
+      <button id="popup-close" class="popup-close-btn" aria-label="关闭弹窗">&times;</button>
+    </div>
+    
+    <!-- 弹窗内容区域 -->
+    <div class="popup-content" id="popup-content-area">
+      <!-- 内容通过 JavaScript 动态加载 -->
+      <div class="popup-loading">加载中...</div>
+    </div>
+    
+    <!-- 弹窗底部按钮 -->
+    <div class="popup-footer">
+      <button id="popup-switch-content" class="popup-btn">查看使用须知</button>
+      <button id="popup-switch-lang" class="popup-btn">Switch to English</button>
+    </div>
+  </div>
+</div>
