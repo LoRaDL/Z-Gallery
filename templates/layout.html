@@ -42,7 +42,12 @@
         };
     </script>
     <header>
-        <h1><a href="{{ mode_url_for('gallery') }}">Zootopia Fanart Gallery</a></h1>
+        <h1>
+            <a href="{{ mode_url_for('gallery') }}" class="logo-link">
+                <img src="{{ mode_url_for('static', filename='logo.svg') }}" alt="Zootopia Gallery Logo" class="site-logo">
+                <span>Zootopia Fanart Gallery</span>
+            </a>
+        </h1>
         <nav id="main-nav">
             <a href="{{ mode_url_for('categories_list') }}">Categories</a>
             <a href="{{ mode_url_for('image_wall', sort='random') }}">Image Wall</a>

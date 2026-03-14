@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_0" data-name="0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800.71 800.71">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #a8a8a8;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #848484;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: .71px;
+      }
+
+      .cls-2 {
+        fill: #cc8127;
+      }
+    </style>
+  </defs>
+  <g>
+    <polygon class="cls-1" points="430.18 .35 472.51 153.13 412.85 153.13 400.35 108.02 387.85 153.13 328.19 153.13 370.52 .35 430.18 .35"/>
+    <rect class="cls-1" x="371.6" y="647.57" width="57.5" height="58.63"/>
+    <polygon class="cls-1" points="191.21 647.57 250.87 647.57 208.54 800.35 153.13 785 191.21 647.57"/>
+    <polygon class="cls-1" points="647.57 785 592.16 800.35 549.83 647.57 609.49 647.57 647.57 785"/>
+  </g>
+  <polygon class="cls-2" points="800.35 210.62 118.57 590.08 800.35 590.08 800.35 647.57 .35 647.57 .35 590.08 682.13 210.62 .35 210.62 .35 153.13 800.35 153.13 800.35 210.62"/>
+</svg>

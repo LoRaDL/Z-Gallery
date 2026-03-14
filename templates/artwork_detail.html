@@ -114,7 +114,7 @@
             </div>
             {% endif %}
 
-            <p class="file-path-info">File: {{ artwork.file_name }}</p>
+            <p class="file-path-info" title="{{ artwork.file_path }}">File: {{ artwork.file_name[:50] + '...' if artwork.file_name|length > 50 else artwork.file_name }}</p>
 
             <!-- 同系列图片 -->
             {% if series_artworks %}

@@ -267,6 +267,6 @@ def _create_thumbnail(file_path, artwork_id):
         img.thumbnail(utils.THUMBNAIL_SIZE)
         if img.mode != 'RGB':
             img = img.convert('RGB')
-        img.save(thumb_path, "JPEG", quality=85)
+        img.save(thumb_path, "JPEG", quality=config.THUMBNAIL_QUALITY)
     
     return thumbnail_filename

@@ -118,25 +118,13 @@
                         <div class="card" id="artwork-{{ art.id }}">
                             <!-- 核心改动: 恢复图片链接结构 -->
                             <a href="{{ mode_url_for('artwork_detail', artwork_id=art.id) }}#page-top" class="card-image-link">
-                                {% if is_private and config.ENABLE_FULL_RES_CARD_IMAGES %}
-                                    <img src="{{ url_for('image_proxy', artwork_id=art.id) }}" 
-                                         alt="{{ art.title or art.file_name }}" 
-                                         loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
-                                         {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
-                                         decoding="async">
-                                {% elif is_private %}
-                                    <img src="{{ url_for('thumbnail', artwork_id=art.id) }}" 
-                                         alt="{{ art.title or art.file_name }}" 
-                                         loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
-                                         {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
-                                         decoding="async">
-                                {% else %}
-                                    <img src="{{ mode_url_for('thumbnail', artwork_id=art.id) }}" 
-                                         alt="{{ art.title or art.file_name }}" 
-                                         loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
-                                         {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
-                                         decoding="async">
-                                {% endif %}
+                                {% set aspect_ratio = aspect_ratios.get(art.id, 1.0) %}
+                                <img src="{% if is_private and config.ENABLE_FULL_RES_CARD_IMAGES %}{{ url_for('image_proxy', artwork_id=art.id) }}{% elif is_private %}{{ url_for('thumbnail', artwork_id=art.id) }}{% else %}{{ mode_url_for('thumbnail', artwork_id=art.id) }}{% endif %}" 
+                                     alt="{{ art.title or art.file_name }}" 
+                                     loading="{% if loop.index <= 8 %}eager{% else %}lazy{% endif %}"
+                                     {% if loop.index <= 4 %}fetchpriority="high"{% endif %}
+                                     decoding="async"
+                                     style="aspect-ratio: {{ aspect_ratio }};">
                             </a>
                             {% if art.classification in ['unspecified', 'mature', 'nsfw'] or art.classification is none %}
                                 <div class="card-classification">{{ art.classification|title if art.classification else 'Unspecified' }}</div>
@@ -342,18 +330,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const allCards = Array.from(document.querySelectorAll('.card'));
             const cardIndex = allCards.indexOf(card);
             
-            // 图片加载完成后重新应用超椭圆
-            const reapplySquircle = () => {
+            // 图片加载完成后移除 aspect-ratio 并重新应用超椭圆
+            const updateAspectRatioAndReapply = () => {
+                // 移除预设的 aspect-ratio，让卡片自然被图片撑开
+                img.style.removeProperty('aspect-ratio');
+                
                 setTimeout(() => {
                     applySquircleToCard(card, cardIndex);
                 }, 100);
             };
             
             if (img.complete && img.naturalHeight !== 0) {
-                reapplySquircle();
+                updateAspectRatioAndReapply();
             } else {
-                img.addEventListener('load', reapplySquircle);
-                img.addEventListener('error', reapplySquircle);
+                img.addEventListener('load', updateAspectRatioAndReapply);
+                img.addEventListener('error', updateAspectRatioAndReapply);
             }
         });
     }

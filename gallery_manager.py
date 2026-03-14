@@ -133,7 +133,7 @@ def _create_thumbnail(full_path, filename):
             # 确保保存时是RGB，避免一些PNG格式问题
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-            img.save(thumb_path, "JPEG", quality=85)
+            img.save(thumb_path, "JPEG", quality=config.THUMBNAIL_QUALITY)
         return True
     except Exception as e:
         print(f"  [!] 无法创建缩略图 for {filename}: {e}")
@@ -241,7 +241,7 @@ def scan_and_update_database():
                 with Image.open(original_path) as img:
                     img.thumbnail(THUMBNAIL_SIZE)
                     if img.mode != 'RGB': img = img.convert('RGB')
-                    img.save(os.path.join(THUMBNAIL_DIR, thumbnail_filename), "JPEG", quality=85)
+                    img.save(os.path.join(THUMBNAIL_DIR, thumbnail_filename), "JPEG", quality=config.THUMBNAIL_QUALITY)
                 
                 # 5. 更新记录，存入缩略图文件名
                 cursor.execute(

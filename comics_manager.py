@@ -78,7 +78,7 @@ def _create_comic_thumbnail(first_page_path, comic_id):
             img.thumbnail((400, 400))
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-            img.save(thumb_path, "JPEG", quality=85)
+            img.save(thumb_path, "JPEG", quality=config.THUMBNAIL_QUALITY)
         return thumbnail_filename
     except Exception as e:
         print(f"Failed to create thumbnail for comic {comic_id}: {e}")

@@ -274,6 +274,10 @@ def api_platforms():
 # --- Page for Adding New Artwork ---
 @app.route('/add')
 def add_artwork_page():
+    # Set private mode for this page
+    g.mode = 'private'
+    g.is_private = True
+    g.is_public = False
     return render_template('add_artwork.html', current_filters={})
 
 # --- API Endpoint to Handle Artwork Upload ---

@@ -29,16 +29,16 @@ a:hover {
 
 header {
     background-color: var(--card-color);
-    padding: 1rem 2rem;
+    padding: 0rem 1.5rem;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem 2rem; /* 行间距1rem，列间距2rem */
     border-bottom: 1px solid var(--border-color);
 }
 
 header h1 {
-    flex: 0 0 auto; /* 不伸缩，保持原始大小 */
+    flex: 0 0 100%; /* 独占一行，强制换行 */
+    margin-bottom: 1rem; /* h1和nav之间的间距（较近） */
 }
 
 header nav {
@@ -48,6 +48,8 @@ header nav {
     flex-wrap: wrap;
     justify-content: flex-start; /* 改为左对齐 */
     min-width: fit-content; /* 确保导航不会被过度压缩 */
+    margin-bottom: 1.5rem; /* nav和search之间的间距 */
+    margin-right: 1.5rem;
 }
 
 .header-right {
@@ -61,12 +63,58 @@ header h1 a {
     text-decoration: none;
 }
 
+/* Logo styles */
+.logo-link {
+    display: flex;
+    flex-direction: unset;
+    align-items: end;
+    gap: 1rem;
+}
+
+.site-logo {
+    height: 5rem;
+    width: auto;
+    display: block;
+}
+
+/* Responsive logo size */
+
+@media (max-width: 800px) {
+    .site-logo {
+        height: 5rem;
+    }
+    .logo-link {
+        align-items: center;
+        flex-direction: unset;
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 512px) {
+    .site-logo {
+        height: 8rem;
+    }
+    .logo-link {
+        align-items: center;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    header h1 {
+        flex: 0 0 100%; /* 独占一行，强制换行 */
+        margin-bottom: 2rem; /* h1和nav之间的间距（较近） */
+    }
+    header {
+        padding: 0rem 0rem;
+    }
+}
+
 .search-form input {
     padding: 0.5rem;
     border: 1px solid var(--border-color);
     background-color: var(--bg-color);
     color: var(--font-color);
     border-radius: 0.5rem;
+    margin-bottom: 1rem;
 }
 .search-form button {
     padding: 0.5rem 1rem;
@@ -153,8 +201,8 @@ main {
 
 /* 无 JS 设备单列布局：移除左右边距 */
 .gallery-grid:not(.js-enabled) {
-    padding-left: 0;
-    padding-right: 0;
+    padding-left: 1.2rem;
+    padding-right: 1.2rem;
 }
 
 .card {
@@ -520,11 +568,14 @@ main {
 }
 .detail-image {
     flex: 2;
+    min-width: 0;
 }
 .detail-image img {
     max-width: 100%;
+    width: 100%;
     height: auto;
     border-radius: 4px;
+    object-fit: contain;
 }
 .detail-info {
     flex: 1;
@@ -996,7 +1047,7 @@ footer {
 
 /* --- 头部布局调整 --- */
 /* 只在小屏幕时强制垂直布局 */
-@media (max-width: 700px) {
+@media (max-width: 800px) {
     header {
         flex-direction: column;
         text-align: center;
@@ -1017,7 +1068,7 @@ footer {
 
 /* --- 汉堡菜单响应式设计 --- */
 /* 当屏幕宽度小于或等于 500px 时，显示汉堡菜单 */
-@media (max-width: 500px) {
+@media (max-width: 512px) {
     .hamburger-menu {
         display: flex; /* 显示汉堡菜单 */
     }
@@ -1057,8 +1108,8 @@ footer {
     /* 汉堡按钮绝对定位到右侧 */
     .hamburger-menu {
         position: absolute;
-        right: 0;
-        top: 50%;
+        right: 5%;
+        top: 35%;
         transform: translateY(-50%);
     }
 
