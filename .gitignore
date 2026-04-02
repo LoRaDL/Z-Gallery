@@ -48,6 +48,7 @@ static/temp_uploads/
 zootopia_pics/
 zootopia_comics/
 static/thumbnails/
+static/thumbnails_old/
 static/comics_thumbnails/
 tools/batch_twitter/downloads
 
@@ -85,3 +86,6 @@ build/
 # Kiro IDE配置
 .kiro/
 .spec-workflow/
+
+#具体网站内容
+content/popup/

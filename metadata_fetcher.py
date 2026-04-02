@@ -45,7 +45,11 @@ def fetch_and_parse(url, proxy=None, debug=False):
         match = re.search(r'/photo/(\d+)', url)
         if match:
             target_photo_num = int(match.group(1))
-            filter_option = ['--filter', f"num == {target_photo_num}"]
+            # URL 已经指定了 /photo/N，gallery-dl 会自动只下载那张
+            # 不需要额外的 --filter，否则两者叠加反而导致 exit code 4
+        else:
+            # 没有 /photo/N，默认下载第一张（单图或多图帖子的第一张）
+            filter_option = ['--filter', 'num == 1']
         
         # 检测是否为多图帖子
         is_multi_image_post = False
@@ -76,60 +80,42 @@ def fetch_and_parse(url, proxy=None, debug=False):
         # --- 2. 获取所有元数据 ---
         meta_result = subprocess.run(metadata_command, capture_output=True, text=True, check=True, timeout=30)
         
-        # --- 3. 检测多图帖子信息 ---
+        # --- 3. 解析元数据，找到与下载文件匹配的媒体块 ---
         data_list = json.loads(meta_result.stdout, strict=False)
         all_dicts = [d for item in data_list if isinstance(item, list) for d in item if isinstance(d, dict)]
-        
-        # 计算帖子中的总图片数量
-        media_entries = [meta for meta in all_dicts if meta.get('filename')]
-        total_images_in_post = len(media_entries)
-        is_multi_image_post = total_images_in_post > 1
-        
-        # 确定当前图片在帖子中的位置
-        # 优先使用URL中的photo参数，如果URL中没有则使用元数据检测
-        if url_based_position > 1:
-            # URL明确指定了图片位置，直接使用
-            current_image_position = url_based_position
-            # 如果URL指定了位置，通常意味着这是多图帖子
-            is_multi_image_post = True
-        else:
-            # URL没有指定位置，使用元数据检测
-            current_image_position = 1
-            if is_multi_image_post:
-                # 找到当前下载的图片在媒体列表中的位置
-                for i, meta in enumerate(media_entries):
-                    if meta.get('filename') == os.path.splitext(downloaded_filename)[0]:
-                        current_image_position = i + 1
-                        break
-        
-        # --- 4. 智能合并元数据 (最终修正版) ---
+
+        filename_key = os.path.splitext(downloaded_filename)[0]
+
         content_block = {}
         media_block = {}
 
-        # 找到内容块 (通常是推文本身)
         for meta in all_dicts:
-            if 'content' in meta or 'hashtags' in meta:
+            # 找内容块（推文正文）
+            if not content_block and ('content' in meta or 'hashtags' in meta):
                 content_block = meta
-                break # 假设只有一个主要的内容块
-
-        # 找到与下载文件匹配的媒体块
-        filename_key = os.path.splitext(downloaded_filename)[0]
-        for meta in all_dicts:
+            # 找与下载文件匹配的媒体块
             if meta.get('filename') == filename_key:
                 media_block = meta
-                break
-        
-        # 智能合并: 以内容块为基础，用媒体块的信息来补充
-        final_meta = content_block.copy() # 创建一个副本
-        final_meta.update(media_block)    # 用媒体块更新它
+
+        # 智能合并：以内容块为基础，用媒体块覆盖（媒体块的 num/count/tweet_id 更准确）
+        final_meta = content_block.copy()
+        final_meta.update(media_block)
 
         if not final_meta:
             raise ValueError("No suitable metadata found.")
 
-        # --- 4. 使用统一的解析器 ---
+        # --- 4. 确定图片位置和多图信息 ---
+        # 优先用 media_block 里 gallery-dl 给出的 num/count（最可靠）
+        # URL 中的 /photo/N 作为兜底（当 media_block 匹配失败时）
+        total_images_in_post = media_block.get('count') or len(
+            [m for m in all_dicts if m.get('filename')]
+        )
+        current_image_position = media_block.get('num') or url_based_position
+        is_multi_image_post = total_images_in_post > 1
+
+        # --- 5. 使用统一的解析器 ---
         metadata = fix_surrogates(final_meta)
-        
-        # 调用共享的Twitter元数据解析器
+
         extracted_data = twitter_metadata_parser.parse_twitter_metadata(
             data=metadata,
             image_position=current_image_position,
@@ -152,14 +138,14 @@ def fetch_and_parse(url, proxy=None, debug=False):
     except Exception as e:
         error_message = f"Error in metadata_fetcher.py: {e}"
         if isinstance(e, subprocess.CalledProcessError):
-            error_message += f"\ngallery-dl stderr:\n{e.stderr.decode('utf-8', errors='ignore')}"
+            error_message += f"\ngallery-dl stderr:\n{e.stderr}"
         print(error_message, file=sys.stderr)
         sys.exit(1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Fetch metadata from URL using gallery-dl')
     parser.add_argument('url', help='URL to fetch metadata from')
-    parser.add_argument('--proxy', help='Proxy server to use (e.g., http://172.20.10.1:10809)')
+    parser.add_argument('--proxy', help='Proxy server to use (e.g., http://127.0.0.1:10809)')
 
     args = parser.parse_args()
 

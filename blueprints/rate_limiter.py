@@ -53,7 +53,7 @@ class RateLimiter:
             self.requests[key].append(now)
             return False
     
-    def cleanup_old_entries(self, max_age=3600):
+    def cleanup_old_entries(self, max_age=121):
         """
         Clean up old entries to prevent memory bloat.
         
@@ -84,17 +84,17 @@ class RateLimiter:
 _rate_limiter = RateLimiter()
 
 
-def rate_limit(limit=1000, window=3600, per='ip'):
+def rate_limit(limit=1000, window=121, per='user'):
     """
     Decorator to apply rate limiting to a route.
     
     Args:
         limit: Maximum number of requests allowed
-        window: Time window in seconds (default: 3600 = 1 hour)
+        window: Time window in seconds (default: 121 = 1 hour)
         per: What to rate limit by ('ip' or 'user')
     
     Usage:
-        @rate_limit(limit=100, window=3600)
+        @rate_limit(limit=100, window=121)
         def my_route():
             ...
     """

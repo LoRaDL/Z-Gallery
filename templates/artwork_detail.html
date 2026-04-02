@@ -17,6 +17,9 @@
                 <div class="info-row">
                     <strong>Artist:</strong> 
                     <span class="editable-field" data-field="artist"><a href="{{ mode_url_for('gallery', artist=artwork.artist) }}">{{ artwork.artist or 'Unknown' }}</a></span>
+                    {% if artwork.source_platform and artwork.source_platform.lower() == 'twitter' and artwork.artist %}
+                    <a href="https://x.com/{{ artwork.artist }}" target="_blank" rel="noopener noreferrer" title="View on X (Twitter)" class="twitter-profile-link">↗ View on X</a>
+                    {% endif %}
                 </div>
                 <div class="info-row">
                     <strong>Platform:</strong> 
@@ -26,6 +29,12 @@
                     <strong>Published Date:</strong> 
                     <span class="editable-field" data-field="publication_date">{{ artwork.publication_date or 'N/A' }}</span>
                 </div>
+                {% if artwork.source_url %}
+                <div class="info-row">
+                    <strong>Source:</strong>
+                    <a href="{{ artwork.source_url }}" target="_blank" rel="noopener noreferrer" class="source-url-link">↗ View Original</a>
+                </div>
+                {% endif %}
                 <div class="info-row">
                     <strong>Description:</strong>
                     <div class="editable-field multiline" data-field="description">

@@ -193,8 +193,8 @@ function updatePopupContent(data) {
           en: 'Website Declaration'
         },
         terms: {
-          zh: '使用须知',
-          en: 'Terms of Use'
+          zh: '站长的话',
+          en: "A Note from the Admin"
         }
       };
       
@@ -215,46 +215,24 @@ function updatePopupContent(data) {
 }
 
 /**
- * Update button labels based on current state
- * @param {Object} state - Current state object with type and lang properties
- *   { type: 'declaration' | 'terms', lang: 'zh' | 'en' }
- * Validates: Requirements 5.6
+ * Update toggle button active states based on current state
+ * @param {Object} state - { type: 'declaration' | 'terms', lang: 'zh' | 'en' }
  */
 function updateButtonLabels(state) {
   try {
-    const contentBtn = document.getElementById('popup-switch-content');
-    const langBtn = document.getElementById('popup-switch-lang');
-    
-    if (!contentBtn || !langBtn) {
-      console.error('Button elements not found');
-      return;
-    }
-    
-    // Update content switch button label
-    // Show the target content type (what user will see after clicking)
     const contentLabels = {
-      declaration: {
-        zh: '查看使用须知',
-        en: 'View Terms of Use'
-      },
-      terms: {
-        zh: '查看网站声明',
-        en: 'View Declaration'
-      }
+      declaration: { zh: '网站声明', en: 'Declaration' },
+      terms:       { zh: '站长的话', en: "A Note from the Admin" }
     };
-    
-    contentBtn.textContent = contentLabels[state.type]?.[state.lang] || '切换内容';
-    
-    // Update language switch button label
-    // Show the target language (what user will see after clicking)
-    const langLabels = {
-      zh: 'Switch to English',
-      en: '切换到中文'
-    };
-    
-    langBtn.textContent = langLabels[state.lang] || 'Switch Language';
+    document.querySelectorAll('.popup-toggle-btn[data-content]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.content === state.type);
+      btn.textContent = contentLabels[btn.dataset.content][state.lang];
+    });
+    document.querySelectorAll('.popup-toggle-btn[data-lang]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === state.lang);
+    });
   } catch (e) {
-    console.error('Error updating button labels:', e);
+    console.error('Error updating toggle buttons:', e);
   }
 }
 
@@ -269,52 +247,34 @@ function updateButtonLabels(state) {
  */
 let currentState = {
   type: 'declaration',  // 'declaration' or 'terms'
-  lang: 'zh'            // 'zh' or 'en'
+  lang: 'en'            // 'zh' or 'en'
 };
 
 /**
  * Switch to the other language and reload content
- * Maintains the current content type while changing language
- * Validates: Requirements 3.2, 3.4, 3.5
  */
-async function switchLanguage() {
+async function switchLanguage(lang) {
   try {
-    // Toggle language: zh <-> en
-    currentState.lang = currentState.lang === 'zh' ? 'en' : 'zh';
-    
-    // Load content with new language but same content type
+    currentState.lang = lang;
     const data = await loadPopupContent(currentState.type, currentState.lang);
-    
-    // Update UI with new content
     updatePopupContent(data);
     updateButtonLabels(currentState);
   } catch (e) {
     console.error('Error switching language:', e);
-    // Revert language on error
-    currentState.lang = currentState.lang === 'zh' ? 'en' : 'zh';
   }
 }
 
 /**
  * Switch to the other content type and reload content
- * Maintains the current language while changing content type
- * Validates: Requirements 4.2, 4.4, 4.5
  */
-async function switchContent() {
+async function switchContent(type) {
   try {
-    // Toggle content type: declaration <-> terms
-    currentState.type = currentState.type === 'declaration' ? 'terms' : 'declaration';
-    
-    // Load content with new type but same language
+    currentState.type = type;
     const data = await loadPopupContent(currentState.type, currentState.lang);
-    
-    // Update UI with new content
     updatePopupContent(data);
     updateButtonLabels(currentState);
   } catch (e) {
     console.error('Error switching content:', e);
-    // Revert content type on error
-    currentState.type = currentState.type === 'declaration' ? 'terms' : 'declaration';
   }
 }
 
@@ -349,58 +309,54 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 });
 
-/**
- * Bind all event listeners for popup interactions
- * Validates: Requirements 5.2, 5.6, 3.1, 4.1
- */
 function bindEventListeners() {
   try {
-    // Get all interactive elements
     const closeBtn = document.getElementById('popup-close');
     const overlay = document.getElementById('first-visit-popup');
-    const switchContentBtn = document.getElementById('popup-switch-content');
-    const switchLangBtn = document.getElementById('popup-switch-lang');
-    
-    // Bind close button click event
+
     if (closeBtn) {
       closeBtn.addEventListener('click', function(e) {
-        e.stopPropagation(); // Prevent event bubbling
+        e.stopPropagation();
         hidePopup();
       });
-    } else {
-      console.warn('Close button not found');
     }
-    
-    // Bind overlay click event (clicking outside popup closes it)
+
     if (overlay) {
       overlay.addEventListener('click', function(e) {
-        // Only close if clicking directly on overlay, not on popup content
-        if (e.target === overlay) {
-          hidePopup();
+        if (e.target === overlay) hidePopup();
+      });
+    }
+
+    // Content type toggle buttons
+    document.querySelectorAll('.popup-toggle-btn[data-content]').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (this.dataset.content !== currentState.type) {
+          switchContent(this.dataset.content);
         }
       });
-    } else {
-      console.warn('Popup overlay not found');
-    }
-    
-    // Bind language switch button click event
-    if (switchLangBtn) {
-      switchLangBtn.addEventListener('click', function(e) {
-        e.stopPropagation(); // Prevent event bubbling
-        switchLanguage();
+    });
+
+    // Language toggle buttons
+    document.querySelectorAll('.popup-toggle-btn[data-lang]').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (this.dataset.lang !== currentState.lang) {
+          switchLanguage(this.dataset.lang);
+        }
       });
-    } else {
-      console.warn('Language switch button not found');
-    }
-    
-    // Bind content switch button click event
-    if (switchContentBtn) {
-      switchContentBtn.addEventListener('click', function(e) {
-        e.stopPropagation(); // Prevent event bubbling
-        switchContent();
+    });
+
+    // Nav trigger to re-open popup
+    const showPopupTrigger = document.getElementById('show-popup-trigger');
+    if (showPopupTrigger) {
+      showPopupTrigger.addEventListener('click', async function(e) {
+        e.preventDefault();
+        const data = await loadPopupContent(currentState.type, currentState.lang);
+        updatePopupContent(data);
+        updateButtonLabels(currentState);
+        showPopup();
       });
-    } else {
-      console.warn('Content switch button not found');
     }
   } catch (e) {
     console.error('Error binding event listeners:', e);

@@ -71,6 +71,19 @@ header h1 a {
     gap: 1rem;
 }
 
+.site-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0rem;
+}
+
+.site-subtitle {
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: #888;
+    letter-spacing: 0.03em;
+}
+
 .site-logo {
     height: 5rem;
     width: auto;
@@ -84,7 +97,7 @@ header h1 a {
         height: 5rem;
     }
     .logo-link {
-        align-items: center;
+        align-items: end;
         flex-direction: unset;
         gap: 1rem;
     }
@@ -692,6 +705,32 @@ main {
 .info-row .editable-field a:hover {
     color: var(--link-hover);
     text-decoration: underline;
+}
+
+.twitter-profile-link {
+    margin-left: 0.5rem;
+    color: var(--link-color);
+    text-decoration: none;
+    font-size: 1.1em;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.twitter-profile-link:hover {
+    opacity: 1;
+    color: var(--link-hover);
+}
+
+.source-url-link {
+    color: var(--link-color);
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.source-url-link:hover {
+    opacity: 1;
+    color: var(--link-hover);
 }
 
 .info-row .editable-field.multiline {

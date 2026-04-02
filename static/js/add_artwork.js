@@ -123,6 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // 核心: 将临时文件名存入隐藏输入框，并清空文件输入
                     hiddenTempInput.value = result.temp_path;
+                    // 将 source_url 存入隐藏输入框
+                    const sourceUrlInput = document.getElementById('source_url_input');
+                    if (sourceUrlInput) sourceUrlInput.value = data.source_url || '';
                     fileInput.value = ''; // 清空手动选择的文件
                     imagePreview.src = `/temp_image/${result.temp_path}`;
                     imagePreview.classList.remove('hidden');

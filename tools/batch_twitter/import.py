@@ -214,13 +214,15 @@ def parse_gallery_dl_metadata(json_path):
     # 提取多图信息
     image_position = data.get('num', 1)
     total_images = data.get('count', 1)
+    is_multi_image_post = total_images > 1
     post_id = data.get('tweet_id') or data.get('post_id')
     
     # 使用共享的解析器
     extracted = twitter_metadata_parser.parse_twitter_metadata(
         data,
         image_position=image_position,
-        total_images=total_images
+        total_images=total_images,
+        is_multi_image_post=is_multi_image_post
     )
     
     # 添加调试信息

@@ -47,21 +47,12 @@ def parse_twitter_metadata(data, image_position=None, total_images=None, is_mult
     if not title:
         title = f"Untitled ({data.get('tweet_id', 'unknown')})"
     
-    # 自动添加标号逻辑（与metadata_fetcher.py保持一致）
+    # 自动添加标号逻辑
     if title:
-        # 情况1：明确是多图帖子（批量下载或单图下载多图帖子）
-        if is_multi_image_post is True and image_position:
+        is_multi = (is_multi_image_post is True) or (total_images and total_images > 1)
+        if is_multi and image_position:
             if not re.search(r'\s*\(\d+\)\s*$', title):
                 title = f"{title} ({image_position})"
-        # 情况2：通过count判断是多图帖子
-        elif total_images and total_images > 1 and image_position:
-            if not re.search(r'\s*\(\d+\)\s*$', title):
-                title = f"{title} ({image_position})"
-        # 情况3：单图下载，但检测到帖子实际有多图，添加(1)
-        # 这种情况：用户只下载了第一张，但total_images显示帖子有多张
-        elif is_multi_image_post is False and total_images and total_images > 1 and image_position == 1:
-            if not re.search(r'\s*\(\d+\)\s*$', title):
-                title = f"{title} (1)"
     
     # 提取标签
     tags_list = data.get('hashtags', []) or data.get('tags', [])
@@ -73,9 +64,24 @@ def parse_twitter_metadata(data, image_position=None, total_images=None, is_mult
     # 日期
     publication_date = data.get('date')
     
-    # URL
+    # 构造推文原始链接
+    # gallery-dl JSON 中没有直接的 tweet URL，需要从 tweet_id + author.name 构造
+    # 多图帖子加 /photo/{num} 精确定位到具体那张图
     source_url = data.get('url')
-    
+    if not source_url:
+        tweet_id = data.get('tweet_id') or data.get('post_id')
+        username = None
+        if isinstance(author_info, dict):
+            username = author_info.get('name')
+        if not username:
+            username = data.get('username')
+        if tweet_id and username:
+            is_multi = (is_multi_image_post is True) or (total_images and total_images > 1)
+            if is_multi and image_position:
+                source_url = f"https://x.com/{username}/status/{tweet_id}/photo/{image_position}"
+            else:
+                source_url = f"https://x.com/{username}/status/{tweet_id}"
+
     return {
         'artist': artist,
         'platform': platform,

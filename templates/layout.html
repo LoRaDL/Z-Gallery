@@ -4,15 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% if request.endpoint and 'comics' in request.endpoint %}Zootopia Comics{% else %}Zootopia Fanart Gallery{% endif %}</title>
+    <link rel="icon" type="image/x-icon" href="{{ mode_url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ mode_url_for('static', filename='favicon-16x16.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ mode_url_for('static', filename='favicon-32x32.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ mode_url_for('static', filename='apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ mode_url_for('static', filename='android-chrome-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ mode_url_for('static', filename='android-chrome-512x512.png') }}">
+    <meta name="theme-color" content="#1a1a1a">
     
-    <!-- iOS Web App 优化 -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- iOS Web App 优化 -->    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Zootopia Gallery">
     <meta name="mobile-web-app-capable" content="yes">
     
     <!-- PWA 主题颜色 -->
-    <meta name="theme-color" content="#1a1a1a">
     <meta name="msapplication-TileColor" content="#1a1a1a">
     
     <link rel="stylesheet" href="{{ mode_url_for('static', filename='css/style.css') }}">
@@ -45,20 +50,30 @@
         <h1>
             <a href="{{ mode_url_for('gallery') }}" class="logo-link">
                 <img src="{{ mode_url_for('static', filename='logo.svg') }}" alt="Zootopia Gallery Logo" class="site-logo">
-                <span>Zootopia Fanart Gallery</span>
+                <span class="site-title-group">
+                    <span>Zootopia Fanart Gallery</span>
+                    <span class="site-subtitle">An unofficial fanart collection, purely for love and preservation.</span>
+                </span>
             </a>
         </h1>
         <nav id="main-nav">
             <a href="{{ mode_url_for('categories_list') }}">Categories</a>
             <a href="{{ mode_url_for('image_wall', sort='random') }}">Image Wall</a>
+            {% if is_private %}
             <a href="{{ mode_url_for('slide_view', sort='random') }}">Slide View</a>
+            {% endif %}
             <a href="{{ mode_url_for('gallery', sort='random') }}">Random</a>
+            {% if is_private %}
             <a href="{{ mode_url_for('comics') }}">Comics</a>
+            {% endif %}
             <a href="#" id="image-search-trigger">Search by Image</a>
             {% if is_private %}
             <a href="{{ mode_url_for('add_artwork_page') }}">Add Artwork</a>
             {% endif %}
             <a href="{{ mode_url_for('statistics') }}">Statistics</a>
+            {% if is_public %}
+            <a href="#" id="show-popup-trigger">Site Info</a>
+            {% endif %}
             {% if is_private %}
             <a href="{{ mode_url_for('monitoring') }}">Monitoring</a>
             {% endif %}
@@ -79,7 +94,7 @@
         {% block content %}{% endblock %}
     </main>
     <footer>
-        <p>A Personal Collection</p>
+        <p>Zootopia is © The Walt Disney Company.</p>
     </footer>
 
     <!-- Hamburger Menu Overlay -->
