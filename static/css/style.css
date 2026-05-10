@@ -22,6 +22,7 @@ a {
     color: var(--link-color);
     text-decoration: none;
 }
+
 a:hover {
     color: var(--link-hover);
     text-decoration: underline;
@@ -37,27 +38,35 @@ header {
 }
 
 header h1 {
-    flex: 0 0 100%; /* 独占一行，强制换行 */
-    margin-bottom: 1rem; /* h1和nav之间的间距（较近） */
+    flex: 0 0 100%;
+    /* 独占一行，强制换行 */
+    margin-bottom: 1rem;
+    /* h1和nav之间的间距（较近） */
 }
 
 header nav {
-    flex: 1 1 auto; /* 可伸缩，占据剩余空间 */
+    flex: 1 1 auto;
+    /* 可伸缩，占据剩余空间 */
     display: flex;
     gap: 1.5rem;
     flex-wrap: wrap;
-    justify-content: flex-start; /* 改为左对齐 */
-    min-width: fit-content; /* 确保导航不会被过度压缩 */
-    margin-bottom: 1.5rem; /* nav和search之间的间距 */
+    justify-content: flex-start;
+    /* 改为左对齐 */
+    min-width: fit-content;
+    /* 确保导航不会被过度压缩 */
+    margin-bottom: 1.5rem;
+    /* nav和search之间的间距 */
     margin-right: 1.5rem;
 }
 
 .header-right {
-    flex: 0 0 auto; /* 不伸缩，保持原始大小 */
+    flex: 0 0 auto;
+    /* 不伸缩，保持原始大小 */
     display: flex;
     align-items: center;
     gap: 1rem;
 }
+
 header h1 a {
     color: var(--font-color);
     text-decoration: none;
@@ -96,6 +105,7 @@ header h1 a {
     .site-logo {
         height: 5rem;
     }
+
     .logo-link {
         align-items: end;
         flex-direction: unset;
@@ -107,15 +117,20 @@ header h1 a {
     .site-logo {
         height: 8rem;
     }
+
     .logo-link {
         align-items: center;
         flex-direction: column;
         gap: 1rem;
     }
+
     header h1 {
-        flex: 0 0 100%; /* 独占一行，强制换行 */
-        margin-bottom: 2rem; /* h1和nav之间的间距（较近） */
+        flex: 0 0 100%;
+        /* 独占一行，强制换行 */
+        margin-bottom: 2rem;
+        /* h1和nav之间的间距（较近） */
     }
+
     header {
         padding: 0rem 0rem;
     }
@@ -129,6 +144,7 @@ header h1 a {
     border-radius: 0.5rem;
     margin-bottom: 1rem;
 }
+
 .search-form button {
     padding: 0.5rem 1rem;
     border: 1px solid var(--link-color);
@@ -136,7 +152,8 @@ header h1 a {
     color: #fff;
     cursor: pointer;
     border-radius: 0.5rem;
-    height: calc(1rem + 2px + 2*0.5rem - 2px); /* 减小2个像素高度达到视觉平衡 */
+    height: calc(1rem + 2px + 2*0.5rem - 2px);
+    /* 减小2个像素高度达到视觉平衡 */
     box-sizing: border-box;
 }
 
@@ -149,11 +166,13 @@ main {
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
 }
+
 .filter-bar a {
     margin-right: 1rem;
     padding: 0.3rem 0.6rem;
     border-radius: 4px;
 }
+
 .filter-bar a.active {
     background-color: var(--link-color);
     color: #fff;
@@ -192,24 +211,37 @@ main {
 
 /* 中等屏幕 */
 @media (max-width: 1200px) {
-    .gallery-grid { gap: 1.2rem; }
-    .masonry-column { gap: 1.2rem; }
+    .gallery-grid {
+        gap: 1.2rem;
+    }
+
+    .masonry-column {
+        gap: 1.2rem;
+    }
 }
 
 /* 小屏幕 */
 @media (max-width: 900px) {
-    .gallery-grid { gap: 1rem; }
-    .masonry-column { gap: 1rem; }
+    .gallery-grid {
+        gap: 1rem;
+    }
+
+    .masonry-column {
+        gap: 1rem;
+    }
 }
 
 /* 手机屏幕：单列时移除左右边距 */
 @media (max-width: 600px) {
-    .gallery-grid { 
+    .gallery-grid {
         gap: 0.8rem;
         padding-left: 0;
         padding-right: 0;
     }
-    .masonry-column { gap: 0.8rem; }
+
+    .masonry-column {
+        gap: 0.8rem;
+    }
 }
 
 /* 无 JS 设备单列布局：移除左右边距 */
@@ -222,7 +254,7 @@ main {
     background-color: var(--card-color);
     /* Fallback 2: 常规圆角，半径 38px */
     border-radius: 38px;
-    
+
     /* 核心逻辑：
        1. 优先使用 CSS corner-shape: squircle (半径 76px)
        2. 不支持则回退到 clip-path 方案 (由 JS 动态计算路径并应用)
@@ -249,7 +281,7 @@ main {
         border-radius: 76px;
         corner-shape: squircle;
     }
-    
+
     /* 如果原生支持 squircle，强制覆盖 JS 可能应用过的 clip-path 方案 */
     .card[data-squircle="applied"] {
         border-radius: 76px !important;
@@ -263,9 +295,11 @@ main {
     -webkit-mask-composite: source-over;
     mask-composite: add;
 }
+
 .card a {
     display: block;
 }
+
 .card img {
     width: 100%;
     height: auto;
@@ -284,44 +318,54 @@ main {
 }
 
 /* 专门为JS创建的、包裹图片的链接设置样式 */
-.card > a:first-child {
+.card>a:first-child {
     display: block;
     text-decoration: none;
 }
 
 /* 为标题中的链接设置样式 */
 .card .title a {
-    color: inherit; /* 继承父元素 <p> 的颜色 */
-    text-decoration: none; /* 默认无下划线 */
+    color: inherit;
+    /* 继承父元素 <p> 的颜色 */
+    text-decoration: none;
+    /* 默认无下划线 */
 }
 
 .card .title a:hover {
-    text-decoration: underline; /* 鼠标悬停时显示下划线 */
+    text-decoration: underline;
+    /* 鼠标悬停时显示下划线 */
 }
 
 .card-info {
     padding: 1rem;
     margin-top: -0.5rem;
 }
+
 .card-info p {
     margin: 0.3rem 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 .card-info .artist a {
     font-weight: bold;
 }
+
 .card-info .title {
     color: #aaa;
     font-size: 0.9em;
 }
 
 .rating-form form {
-    display: flex; /* 启用 Flexbox 布局 */
-    justify-content: center; /* 元素在主轴上（水平）居中 */
-    align-items: center; /* 元素在交叉轴上（垂直）居中 */
-    width: 100%; /* 确保表单占据其父容器的全部宽度 */
+    display: flex;
+    /* 启用 Flexbox 布局 */
+    justify-content: center;
+    /* 元素在主轴上（水平）居中 */
+    align-items: center;
+    /* 元素在交叉轴上（垂直）居中 */
+    width: 100%;
+    /* 确保表单占据其父容器的全部宽度 */
 }
 
 .rating-form form button {
@@ -331,11 +375,13 @@ main {
     padding: 0;
     font-size: 1.2em;
     cursor: pointer;
-    flex: 1; 
+    flex: 1;
 }
+
 .rating-form form button.rated {
     color: var(--star-rated);
 }
+
 .rating-form form button.pending {
     color: var(--star-rated);
     opacity: 0.5;
@@ -348,8 +394,10 @@ main {
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: calc(2.5rem + 2px); /* Match input field height (padding + border) */
-    margin-top: -0.5rem; /* 上移一点 */
+    height: calc(2.5rem + 2px);
+    /* Match input field height (padding + border) */
+    margin-top: -0.5rem;
+    /* 上移一点 */
 }
 
 #rating-form .rating-star {
@@ -357,11 +405,14 @@ main {
     border: none;
     color: var(--star-unrated);
     padding: 0;
-    font-size: 1.5em; /* Increased size */
+    font-size: 1.5em;
+    /* Increased size */
     cursor: pointer;
     flex: 1;
-    outline: none; /* Remove focus outline */
-    height: 100%; /* Make stars fill container height */
+    outline: none;
+    /* Remove focus outline */
+    height: 100%;
+    /* Make stars fill container height */
 }
 
 #rating-form .rating-star.rated {
@@ -372,7 +423,8 @@ main {
     background: none;
     border: none;
     color: var(--star-unrated);
-    padding: 0 0.5em; /* Add some padding */
+    padding: 0 0.5em;
+    /* Add some padding */
 }
 
 /* Slideshow Mode Styles */
@@ -527,16 +579,19 @@ main {
 }
 
 #rating-form .rating-reset {
-    font-size: 1.5em; /* Match star size */
+    font-size: 1.5em;
+    /* Match star size */
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 100%; /* Make reset button fill container height */
+    height: 100%;
+    /* Make reset button fill container height */
 }
 
 #rating-form .rating-reset:hover {
-    color: #dc3545; /* Red color on hover */
+    color: #dc3545;
+    /* Red color on hover */
 }
 
 .pagination {
@@ -579,10 +634,12 @@ main {
     max-width: 1400px;
     margin: auto;
 }
+
 .detail-image {
     flex: 2;
     min-width: 0;
 }
+
 .detail-image img {
     max-width: 100%;
     width: 100%;
@@ -590,6 +647,7 @@ main {
     border-radius: 4px;
     object-fit: contain;
 }
+
 .detail-info {
     flex: 1;
     padding: 1rem;
@@ -738,7 +796,9 @@ main {
     line-height: 1.5;
 }
 
-.edit-button, .save-button, .cancel-button {
+.edit-button,
+.save-button,
+.cancel-button {
     padding: 0.6rem 1.2rem;
     margin: 0 0.5rem;
     border: none;
@@ -782,7 +842,8 @@ main {
 }
 
 /* 编辑输入框样式 */
-.edit-input, .edit-textarea {
+.edit-input,
+.edit-textarea {
     width: 100%;
     padding: 0.5rem;
     border: 2px solid var(--link-color);
@@ -793,7 +854,8 @@ main {
     font-size: inherit;
 }
 
-.edit-input:focus, .edit-textarea:focus {
+.edit-input:focus,
+.edit-textarea:focus {
     outline: none;
     border-color: var(--link-hover);
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
@@ -892,6 +954,7 @@ footer {
     display: inline-block;
     margin: 0 1rem;
 }
+
 .page-jump-form input[type="number"] {
     width: 60px;
     text-align: center;
@@ -901,6 +964,7 @@ footer {
     border-radius: 3px;
     padding: 0.2rem;
 }
+
 .page-jump-form button {
     background: none;
     border: 1px solid var(--link-color);
@@ -912,7 +976,8 @@ footer {
 
 /* Hamburger Menu Styles */
 .hamburger-menu {
-    display: none; /* 默认隐藏，在小屏幕上显示 */
+    display: none;
+    /* 默认隐藏，在小屏幕上显示 */
     flex-direction: column;
     justify-content: space-around;
     width: 30px;
@@ -921,7 +986,8 @@ footer {
     border: none;
     cursor: pointer;
     padding: 0;
-    margin-left: auto; /* 推到右侧 */
+    margin-left: auto;
+    /* 推到右侧 */
 }
 
 .hamburger-line {
@@ -951,38 +1017,45 @@ footer {
     margin-bottom: 1.5rem;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
-    padding-left: 20px; /* 在宽屏时添加左边距 */
+    padding-left: 24px;
+    /* 在宽屏时添加左边距 */
 }
 
-.controls-container > * {
-    margin: 0.3rem 0.5rem; /* 使用与categories页面相同的间隔方案 */
+.controls-container>* {
+    margin: 0.3rem 0.5rem;
+    /* 使用与categories页面相同的间隔方案 */
 }
 
-.controls-container > .filter-label {
+.controls-container>.filter-label {
     margin-left: 0;
 }
 
-.controls-container > .separator {
+.controls-container>.separator {
     margin-left: 1.2rem;
-    margin-right: 0.4rem; /* 在分隔符右侧也添加一点空间 */
+    margin-right: 0.4rem;
+    /* 在分隔符右侧也添加一点空间 */
 }
 
 .filter-bar {
     border-bottom: none;
     margin-bottom: 0;
 }
+
 .active-filters {
     margin-bottom: 1.5rem;
-    padding-left: 20px; /* 在宽屏时添加左边距 */
+    padding-left: 20px;
+    /* 在宽屏时添加左边距 */
 }
 
 /* Total count 样式 */
 .total-count {
     margin-bottom: 1.5rem;
-    padding-left: 20px; /* 在宽屏时添加左边距 */
+    padding-left: 20px;
+    /* 在宽屏时添加左边距 */
     color: var(--font-color);
     font-size: 0.9rem;
 }
+
 .filter-pill {
     display: inline-block;
     background-color: var(--card-color);
@@ -993,15 +1066,18 @@ footer {
     margin-right: 0.5rem;
     font-size: 0.9em;
 }
+
 .filter-pill.clear-all {
     border-color: #e24a4a;
     color: #e24a4a;
 }
+
 .category-page h3 {
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.5rem;
     margin-top: 2rem;
 }
+
 .category-list {
     display: flex;
     flex-wrap: wrap;
@@ -1014,7 +1090,8 @@ footer {
 
 /* For 10-star rating display */
 .rating-form form button {
-    font-size: 1.2em; /* slightly smaller to fit 10 */
+    font-size: 1.2em;
+    /* slightly smaller to fit 10 */
 }
 
 /* =================================== */
@@ -1043,41 +1120,47 @@ footer {
 /* 在小屏幕上，让每个筛选组占据一行 */
 @media (max-width: 768px) {
     .controls-container {
-        flex-direction: row; /* 保持行布局以便筛选组可以分行 */
-        padding-left: 1rem; /* 添加左侧内边距使文字离左边缘有一定空格 */
+        flex-direction: row;
+        /* 保持行布局以便筛选组可以分行 */
+        padding-left: 1rem;
+        /* 添加左侧内边距使文字离左边缘有一定空格 */
     }
-    
+
     .active-filters {
-        padding-left: 1rem; /* 小屏幕时使用较小的左边距 */
+        padding-left: 1rem;
+        /* 小屏幕时使用较小的左边距 */
     }
-    
+
     .total-count {
-        padding-left: 1rem; /* 小屏幕时使用较小的左边距 */
+        padding-left: 1rem;
+        /* 小屏幕时使用较小的左边距 */
     }
-    
-    .controls-container > .filter-label {
+
+    .controls-container>.filter-label {
         margin-top: 0.3rem;
         margin-bottom: 0.2rem;
-        flex-basis: 100%; /* 让标签占据整行 */
+        flex-basis: 100%;
+        /* 让标签占据整行 */
     }
-    
+
     /* 仅为筛选标签和分隔符添加顶部边框以实现分组间的分隔效果 */
-    .controls-container > .filter-label,
-    .controls-container > .separator {
+    .controls-container>.filter-label,
+    .controls-container>.separator {
         border-top: 1px solid var(--border-color);
         padding-top: 0.3rem;
     }
-    
-    .controls-container > * {
+
+    .controls-container>* {
         margin: 0.2rem 0.3rem;
     }
-    
-    .controls-container > .separator {
-        display: none; /* 在小屏幕上隐藏分隔符 */
+
+    .controls-container>.separator {
+        display: none;
+        /* 在小屏幕上隐藏分隔符 */
     }
-    
+
     /* 移除第一个筛选标签的顶部边框以避免多余线条 */
-    .controls-container > .filter-label:first-of-type {
+    .controls-container>.filter-label:first-of-type {
         border-top: none;
         padding-top: 0;
     }
@@ -1091,13 +1174,14 @@ footer {
         flex-direction: column;
         text-align: center;
     }
-    
+
     header nav {
         order: 2;
         width: 100%;
-        justify-content: center; /* 在垂直布局时居中对齐 */
+        justify-content: center;
+        /* 在垂直布局时居中对齐 */
     }
-    
+
     .header-right {
         order: 3;
         width: 100%;
@@ -1109,14 +1193,16 @@ footer {
 /* 当屏幕宽度小于或等于 500px 时，显示汉堡菜单 */
 @media (max-width: 512px) {
     .hamburger-menu {
-        display: flex; /* 显示汉堡菜单 */
+        display: flex;
+        /* 显示汉堡菜单 */
     }
 
     /* 导航默认隐藏在左侧，保持固定定位以支持动画 */
     header nav {
         position: fixed;
         top: 0;
-        left: -100%; /* 默认隐藏在左侧 */
+        left: -100%;
+        /* 默认隐藏在左侧 */
         width: 250px;
         height: 100vh;
         background-color: var(--card-color);
@@ -1127,23 +1213,26 @@ footer {
         align-items: flex-start;
         padding: 4rem 1rem 1rem;
         gap: 1rem;
-        transition: left 0.3s ease; /* 滑动动画 */
+        transition: left 0.3s ease;
+        /* 滑动动画 */
         z-index: 1000;
         box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
     }
-    
+
     /* 当导航打开时滑入 */
     header nav.open {
-        left: 0; /* 滑入到可见位置 */
+        left: 0;
+        /* 滑入到可见位置 */
     }
-    
+
     /* 调整header-right布局，让搜索栏居中，汉堡按钮在右侧 */
     .header-right {
         width: 100%;
         justify-content: center;
-        position: relative; /* 为汉堡按钮的绝对定位做准备 */
+        position: relative;
+        /* 为汉堡按钮的绝对定位做准备 */
     }
-    
+
     /* 汉堡按钮绝对定位到右侧 */
     .hamburger-menu {
         position: absolute;
@@ -1189,18 +1278,21 @@ footer {
     border-top: 1px solid var(--border-color);
 }
 
-.classification-form, .category-form {
+.classification-form,
+.category-form {
     margin-bottom: 1.5rem;
 }
 
-.classification-form strong, .category-form strong {
+.classification-form strong,
+.category-form strong {
     display: block;
     margin-bottom: 0.5rem;
     color: var(--link-color);
     font-weight: 600;
 }
 
-.classification-form select, .category-form select {
+.classification-form select,
+.category-form select {
     width: 100%;
     padding: 0.6rem;
     border: 2px solid var(--border-color);
@@ -1212,13 +1304,15 @@ footer {
     transition: border-color 0.2s ease;
 }
 
-.classification-form select:focus, .category-form select:focus {
+.classification-form select:focus,
+.category-form select:focus {
     outline: none;
     border-color: var(--link-color);
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
 
-.classification-form select:hover, .category-form select:hover {
+.classification-form select:hover,
+.category-form select:hover {
     border-color: var(--link-color);
 }
 
@@ -1246,8 +1340,10 @@ footer {
 
 .management-forms-container {
     display: flex;
-    flex-wrap: wrap; /* 在窄屏幕上允许换行 */
-    gap: 2rem; /* 在两个表单之间增加间距 */
+    flex-wrap: wrap;
+    /* 在窄屏幕上允许换行 */
+    gap: 2rem;
+    /* 在两个表单之间增加间距 */
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--border-color);
@@ -1257,7 +1353,8 @@ footer {
 .classification-form,
 .category-form {
     flex: 1;
-    min-width: 250px; /* 防止在窄屏幕上被过度挤压 */
+    min-width: 250px;
+    /* 防止在窄屏幕上被过度挤压 */
 }
 
 /* 共享表单样式 */
@@ -1265,9 +1362,12 @@ footer {
 .category-form form {
     margin-top: 0.5rem;
     display: flex;
-    flex-direction: column; /* 让单选按钮垂直堆叠 */
-    align-items: flex-start; /* 左对齐 */
-    gap: 0.5rem; /* 单选按钮之间的间距 */
+    flex-direction: column;
+    /* 让单选按钮垂直堆叠 */
+    align-items: flex-start;
+    /* 左对齐 */
+    gap: 0.5rem;
+    /* 单选按钮之间的间距 */
 }
 
 .classification-form label,
@@ -1283,8 +1383,10 @@ footer {
     padding: 0.3rem 0.8rem;
     cursor: pointer;
     border-radius: 3px;
-    margin-top: 0.5rem; /* 与单选按钮保持一点距离 */
-    align-self: flex-start; /* 让按钮也左对齐 */
+    margin-top: 0.5rem;
+    /* 与单选按钮保持一点距离 */
+    align-self: flex-start;
+    /* 让按钮也左对齐 */
 }
 
 /* --- 404 Error Page Styles --- */
@@ -1292,7 +1394,8 @@ footer {
     text-align: center;
     padding: 4rem 2rem;
     max-width: 700px;
-    margin: 3rem auto; /* Center vertically */
+    margin: 3rem auto;
+    /* Center vertically */
     background-color: var(--card-color);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -1300,7 +1403,8 @@ footer {
 
 .error-page-container h2 {
     font-size: 2.5em;
-    color: #e24a4a; /* Bright red for error title */
+    color: #e24a4a;
+    /* Bright red for error title */
     margin-bottom: 1rem;
 }
 
@@ -1315,7 +1419,8 @@ footer {
     display: flex;
     justify-content: center;
     gap: 1.5rem;
-    flex-wrap: wrap; /* Wrap on narrow screens */
+    flex-wrap: wrap;
+    /* Wrap on narrow screens */
 }
 
 .error-button {
@@ -1336,7 +1441,8 @@ footer {
 }
 
 .error-button.external {
-    border-color: #9ec260; /* Different color for external links */
+    border-color: #9ec260;
+    /* Different color for external links */
     color: #9ec260;
 }
 
@@ -1350,26 +1456,34 @@ footer {
   这是为无JS设备准备的。
 */
 .card-image-link {
-    display: block; /* 确保链接像一个块级容器 */
+    display: block;
+    /* 确保链接像一个块级容器 */
     text-decoration: none;
-    pointer-events: none; /* 核心CSS: 使该元素不可被鼠标/触摸点击 */
+    pointer-events: none;
+    /* 核心CSS: 使该元素不可被鼠标/触摸点击 */
 }
 
 /* --- Add Artwork Page Styles (已更新) --- */
 .add-artwork-container {
     max-width: 900px;
-    margin: 0.5rem auto; /* 减小顶部边距 */
-    padding: 1rem; /* 减小内边距 */
+    margin: 0.5rem auto;
+    /* 减小顶部边距 */
+    padding: 1rem;
+    /* 减小内边距 */
     background-color: var(--card-color);
     border-radius: 8px;
     border: 1px solid var(--border-color);
 }
+
 .add-artwork-container h2 {
     text-align: center;
     color: var(--link-color);
-    margin: 0 0 1rem 0; /* 减小底部边距 */
-    font-size: 2.5rem; /* 增大字号 */
+    margin: 0 0 1rem 0;
+    /* 减小底部边距 */
+    font-size: 2.5rem;
+    /* 增大字号 */
 }
+
 .metadata-fetcher .form-group {
     margin-bottom: 0.75rem;
     border-bottom: 1px solid var(--border-color);
@@ -1441,18 +1555,25 @@ footer {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .drop-zones-container {
     display: flex;
-    gap: 1rem; /* 两个拖放区之间的间距 */
+    gap: 1rem;
+    /* 两个拖放区之间的间距 */
     margin-bottom: 1rem;
 }
 
 .drop-zone {
-    flex: 1; /* 让两个拖放区平分空间 */
+    flex: 1;
+    /* 让两个拖放区平分空间 */
     border: 2px dashed var(--border-color);
     border-radius: 8px;
     padding: 1.5rem;
@@ -1463,11 +1584,14 @@ footer {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 150px; /* 增加最小高度，以便图片有更多空间 */
-    position: relative; /* 为图片定位做准备 */
+    min-height: 150px;
+    /* 增加最小高度，以便图片有更多空间 */
+    position: relative;
+    /* 为图片定位做准备 */
 }
 
-.drop-zone:hover, .drop-zone.dragover {
+.drop-zone:hover,
+.drop-zone.dragover {
     border-color: var(--link-color);
     background-color: rgba(74, 144, 226, 0.1);
 }
@@ -1478,16 +1602,22 @@ footer {
 }
 
 #file-drop-zone input[type="file"] {
-    display: none; /* 隐藏实际的文件输入 */
+    display: none;
+    /* 隐藏实际的文件输入 */
 }
 
 #image-preview {
     max-width: 100%;
-    max-height: 100%; /* 允许图片撑满高度 */
-    width: auto; /* 保持图片原始比例 */
-    height: auto; /* 保持图片原始比例 */
-    object-fit: contain; /* 确保图片在容器内完整显示，不被裁剪 */
-    margin-top: 0; /* 移除顶部外边距，让图片更居中 */
+    max-height: 100%;
+    /* 允许图片撑满高度 */
+    width: auto;
+    /* 保持图片原始比例 */
+    height: auto;
+    /* 保持图片原始比例 */
+    object-fit: contain;
+    /* 确保图片在容器内完整显示，不被裁剪 */
+    margin-top: 0;
+    /* 移除顶部外边距，让图片更居中 */
     border-radius: 4px;
     border: 1px solid var(--border-color);
 }
@@ -1498,7 +1628,8 @@ footer {
 
 .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* 两列布局 */
+    grid-template-columns: 1fr 1fr;
+    /* 两列布局 */
     gap: 0.75rem;
     margin-bottom: 0.75rem;
 }
@@ -1597,7 +1728,8 @@ footer {
     width: 100%;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     border-radius: 0 0 4px 4px;
-    display: none; /* 默认隐藏 */
+    display: none;
+    /* 默认隐藏 */
 }
 
 .autocomplete-results div {
@@ -1614,13 +1746,15 @@ footer {
 /* Responsive adjustments for add artwork page */
 @media (max-width: 768px) {
     .drop-zones-container {
-        flex-direction: column; /* 在小屏幕上垂直堆叠 */
+        flex-direction: column;
+        /* 在小屏幕上垂直堆叠 */
     }
 
     .form-grid {
-        grid-template-columns: 1fr; /* 在小屏幕上变为单列 */
+        grid-template-columns: 1fr;
+        /* 在小屏幕上变为单列 */
     }
-    
+
     /* 在更小的屏幕上，让头部导航链接垂直排列 */
     @media (max-width: 480px) {
         header nav {

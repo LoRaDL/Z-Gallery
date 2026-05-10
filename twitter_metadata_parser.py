@@ -63,24 +63,28 @@ def parse_twitter_metadata(data, image_position=None, total_images=None, is_mult
     
     # 日期
     publication_date = data.get('date')
-    
-    # 构造推文原始链接
-    # gallery-dl JSON 中没有直接的 tweet URL，需要从 tweet_id + author.name 构造
-    # 多图帖子加 /photo/{num} 精确定位到具体那张图
-    source_url = data.get('url')
+
+    # 媒体文件直链（pbs.twimg.com CDN URL）
+    media_url = data.get('url')
+
+    # 构造推文原始链接（优先，精确定位到具体那张图）
+    # 从 tweet_id + author.name 构造，多图帖子加 /photo/{num}
+    source_url = None
+    tweet_id = data.get('tweet_id') or data.get('post_id')
+    username = None
+    if isinstance(author_info, dict):
+        username = author_info.get('name')
+    if not username:
+        username = data.get('username')
+    if tweet_id and username:
+        is_multi = (is_multi_image_post is True) or (total_images and total_images > 1)
+        if is_multi and image_position:
+            source_url = f"https://x.com/{username}/status/{tweet_id}/photo/{image_position}"
+        else:
+            source_url = f"https://x.com/{username}/status/{tweet_id}"
+    # 降级：若无法构造推文 URL，退回媒体直链
     if not source_url:
-        tweet_id = data.get('tweet_id') or data.get('post_id')
-        username = None
-        if isinstance(author_info, dict):
-            username = author_info.get('name')
-        if not username:
-            username = data.get('username')
-        if tweet_id and username:
-            is_multi = (is_multi_image_post is True) or (total_images and total_images > 1)
-            if is_multi and image_position:
-                source_url = f"https://x.com/{username}/status/{tweet_id}/photo/{image_position}"
-            else:
-                source_url = f"https://x.com/{username}/status/{tweet_id}"
+        source_url = media_url
 
     return {
         'artist': artist,
@@ -90,5 +94,6 @@ def parse_twitter_metadata(data, image_position=None, total_images=None, is_mult
         'description': description.strip(),
         'classification': classification,
         'publication_date': publication_date,
-        'source_url': source_url
+        'source_url': source_url,
+        'media_url': media_url,
     }

@@ -290,8 +290,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   try {
     // Check if this is the user's first visit
     if (checkFirstVisit()) {
-      // Load default content (Chinese declaration)
-      const data = await loadPopupContent('declaration', 'zh');
+      // Load default content (English declaration)
+      const data = await loadPopupContent(currentState.type, currentState.lang);
       
       // Update popup with loaded content
       updatePopupContent(data);

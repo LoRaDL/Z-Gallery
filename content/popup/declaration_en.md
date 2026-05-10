@@ -24,6 +24,12 @@ We deeply respect the work of every creator:
 
 We encourage everyone to visit the original platforms and support the artists directly.
 
+## About AI Generated Caption & Tags
+This site using AI generated caption & tags only for better artwork searching. No AI training involved.
+
+## About AI training
+DO NOT use images from this site for AI training.
+
 ## Disclaimer
 
 This site is not responsible for any issues arising from content changes on third-party platforms. This site serves solely as an information aggregation and display platform and does not represent the personal views of the original creators.

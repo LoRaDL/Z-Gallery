@@ -37,7 +37,68 @@ PUBLIC_MODE_RATE_LIMIT = '100/hour'  # 速率限制
 PUBLIC_MODE_ENABLE_SEARCH = True  # 是否启用搜索功能
 
 # 11. 公开模式内容过滤
-# 强制应用的过滤器（不在 URL 中显示）
+# 灵活的公开模式过滤配置，包含两类规则：
+#
+# query_filters: 直接注入查询的字段过滤器（与私有模式过滤器语法一致）
+#   支持的键: classification_filter ('sfw'|'mature'|'nsfw'|'unspecified')
+#             artist, source_platform, category, rating_filter
+#
+# exclude_rules: 排除规则列表，每条规则包含若干字段条件，
+#   所有条件同时满足时该作品不在公开模式展示。
+#   每条规则格式:
+#     {
+#       'description': '规则说明（可选）',
+#       'conditions': [
+#           {'field': '字段名', 'op': '操作符', 'value': '值'},
+#           ...  # 多个条件之间为 AND 关系
+#       ]
+#     }
+#   支持的操作符:
+#     'eq'       字段等于值
+#     'neq'      字段不等于值
+#     'is_null'  字段为 NULL（value 忽略）
+#     'not_null' 字段不为 NULL（value 忽略）
+#     'like'     字段 LIKE 值（支持 % 通配符）
+#
 PUBLIC_MODE_FORCED_FILTERS = {
-    'classification_filter': 'sfw'  # 仅显示 SFW 内容
+    'query_filters': {},
+    'exclude_rules': [
+        {
+            'description': '作者 greenpurrpleD 且无原始链接时不展示',
+            'conditions': [
+                {'field': 'artist', 'op': 'eq', 'value': 'greenpurrpleD'},
+                {'field': 'source_url', 'op': 'is_null'},
+            ]
+        },
+        {
+            'description': '分类为 real_photo 的不在公开模式展示',
+            'conditions': [
+                {'field': 'category', 'op': 'eq', 'value': 'real_photo'},
+            ]
+        },
+        {
+            'description': '分类为 other 的不在公开模式展示',
+            'conditions': [
+                {'field': 'category', 'op': 'eq', 'value': 'other'},
+            ]
+        },
+        {
+            'description': 'mature 内容不在公开模式展示',
+            'conditions': [
+                {'field': 'classification', 'op': 'eq', 'value': 'mature'},
+            ]
+        },
+        {
+            'description': 'nsfw 内容不在公开模式展示',
+            'conditions': [
+                {'field': 'classification', 'op': 'eq', 'value': 'nsfw'},
+            ]
+        },
+        {
+            'description': '未分类内容不在公开模式展示',
+            'conditions': [
+                {'field': 'classification', 'op': 'is_null'},
+            ]
+        },
+    ]
 }

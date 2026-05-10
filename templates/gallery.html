@@ -34,7 +34,7 @@
     <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'newest')) }}" class="{{ 'active' if current_sort == 'newest' }}">Newest</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'oldest')) }}" class="{{ 'active' if current_sort == 'oldest' }}">Oldest</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'latest_added')) }}" class="{{ 'active' if current_sort == 'latest_added' }}">Latest Added</a>
-    <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'rating')) }}" class="{{ 'active' if current_sort == 'rating' }}">Rating</a>
+    <a href="{{ mode_url_for('gallery', **generate_url_params('sort', 'rating')) }}" class="{{ 'active' if current_sort == 'rating' }}">{% if is_public %}Favorite{% else %}Rating{% endif %}</a>
 
     <span class="separator">|</span>
 
@@ -53,15 +53,17 @@
     <span class="filter-label">Category:</span>
     <a href="{{ mode_url_for('gallery', **generate_url_params('category', 'fanart_non_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_non_comic' }}">Art</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('category', 'fanart_comic')) }}" class="{{ 'active' if current_filters.get('category') == 'fanart_comic' }}">Comic</a>
+    {% if is_private %}
     <a href="{{ mode_url_for('gallery', **generate_url_params('category', 'real_photo')) }}" class="{{ 'active' if current_filters.get('category') == 'real_photo' }}">Photo</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('category', 'other')) }}" class="{{ 'active' if current_filters.get('category') == 'other' }}">Other</a>
+    {% endif %}
 
     <span class="separator">|</span>
 
 
 
     <!-- Rating Group -->
-    <span class="filter-label">Rating:</span>
+    <span class="filter-label">{% if is_public %}Heartbeat:{% else %}Rating:{% endif %}</span>
     <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', 'unrated')) }}" class="{{ 'active' if current_filters.get('rating_filter') == 'unrated' }}">Unrated</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', '5_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '5_plus' }}">5★+</a>
     <a href="{{ mode_url_for('gallery', **generate_url_params('rating_filter', '8_plus')) }}" class="{{ 'active' if current_filters.get('rating_filter') == '8_plus' }}">8★+</a>

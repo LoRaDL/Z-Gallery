@@ -24,7 +24,7 @@ import twitter_metadata_parser
 
 # LLM配置
 # 确保LMstudio正在运行并加载了支持视觉的模型（如llava、qwen2-vl等）
-LM_STUDIO_BASE_URL = "http://localhost:1234/v1"
+LM_STUDIO_BASE_URL = "http://127.0.0.1:1234/v1"
 LM_STUDIO_MODEL = "local-model"  # LMstudio中的模型名称，通常为"local-model"
 
 # 默认开关
@@ -110,48 +110,65 @@ def encode_image_to_base64(image_path, max_size=896):
         return None
 
 
-def classify_with_lmstudio(image_path, enable_streaming=True):
-    """使用LMstudio进行图片分类，支持流式输出"""
-    try:
-        # 编码图片（下采样到896px）
-        image_data = encode_image_to_base64(image_path, max_size=896)
-        if not image_data:
-            return None, None
-        
-        # 构建请求
-        payload = {
-            "model": LM_STUDIO_MODEL,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": SYSTEM_PROMPT
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{image_data}"
+# LLM分类的合法值
+VALID_CATEGORIES = {'fanart', 'real_photo', 'other'}
+VALID_CLASSIFICATIONS = {'sfw', 'mature', 'nsfw'}
+
+# 重试配置
+LLM_MAX_RETRIES = 3
+LLM_RETRY_DELAY = 2  # 秒
+
+
+def classify_with_lmstudio(image_path, enable_streaming=True, max_retries=LLM_MAX_RETRIES):
+    """使用LMstudio进行图片分类，支持流式输出。
+    
+    连接错误或格式解析错误时会重试最多 max_retries 次。
+    所有重试耗尽后返回 (None, None)。
+    """
+    # 编码图片（下采样到896px）- 只做一次
+    image_data = encode_image_to_base64(image_path, max_size=896)
+    if not image_data:
+        return None, None
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            # 构建请求
+            payload = {
+                "model": LM_STUDIO_MODEL,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": SYSTEM_PROMPT
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{image_data}"
+                                }
                             }
-                        }
-                    ]
-                }
-            ],
-            "max_tokens": 300,
-            "temperature": 0.1,
-            "stream": enable_streaming
-        }
-        
-        # 发送请求
-        response = requests.post(
-            f"{LM_STUDIO_BASE_URL}/chat/completions",
-            json=payload,
-            timeout=60,
-            stream=enable_streaming
-        )
-        
-        if response.status_code == 200:
+                        ]
+                    }
+                ],
+                "max_tokens": 300,
+                "temperature": 0.1,
+                "stream": enable_streaming
+            }
+            
+            # 发送请求
+            response = requests.post(
+                f"{LM_STUDIO_BASE_URL}/chat/completions",
+                json=payload,
+                timeout=60,
+                stream=enable_streaming
+            )
+            
+            if response.status_code != 200:
+                print(f"HTTP {response.status_code}")
+                raise ConnectionError(f"LLM返回HTTP {response.status_code}")
+            
             if enable_streaming:
                 # 流式处理
                 content = ""
@@ -179,31 +196,38 @@ def classify_with_lmstudio(image_path, enable_streaming=True):
                 content = result['choices'][0]['message']['content']
             
             # 解析响应
-            analysis = None
             category = None
             classification = None
             
             for line in content.split('\n'):
                 line = line.strip()
-                if line.startswith('Analysis:'):
-                    analysis = line.replace('Analysis:', '').strip()
-                elif line.startswith('Category:'):
-                    category = line.replace('Category:', '').strip()
+                if line.startswith('Category:'):
+                    category = line.replace('Category:', '').strip().lower()
                 elif line.startswith('Classification:'):
-                    classification = line.replace('Classification:', '').strip()
+                    classification = line.replace('Classification:', '').strip().lower()
+            
+            # 验证解析结果是否是合法值
+            if category not in VALID_CATEGORIES:
+                raise ValueError(f"LLM返回了无法识别的category: '{category}' (合法值: {VALID_CATEGORIES})")
+            if classification not in VALID_CLASSIFICATIONS:
+                raise ValueError(f"LLM返回了无法识别的classification: '{classification}' (合法值: {VALID_CLASSIFICATIONS})")
             
             # 映射category：fanart -> fanart_non_comic
             if category == 'fanart':
                 category = 'fanart_non_comic'
             
             return category, classification
-        else:
-            print(f"HTTP {response.status_code}")
-            return None, None
             
-    except Exception as e:
-        print(f"失败: {e}")
-        return None, None
+        except Exception as e:
+            if attempt < max_retries:
+                print(f"  ⚠ 第{attempt}次尝试失败: {e}，{LLM_RETRY_DELAY}秒后重试...")
+                time.sleep(LLM_RETRY_DELAY)
+                if enable_streaming:
+                    print(f"     ", end="", flush=True)  # 为下次流式输出重新缩进
+            else:
+                print(f"  ✗ 第{attempt}次尝试失败: {e}")
+    
+    return None, None
 
 
 def parse_gallery_dl_metadata(json_path):
@@ -541,14 +565,15 @@ def import_batch(directory, check_duplicates=True, threshold=1, interactive=Fals
                 print(f"     ", end="", flush=True)
                 llm_category, llm_classification = classify_with_lmstudio(image_path, enable_streaming=True)
                 if llm_category and llm_classification:
-                    print(f"\n     结果: [{llm_category}] [{llm_classification}]")
+                    print(f"     结果: [{llm_category}] [{llm_classification}]")
                     # 更新metadata中的分类信息
                     metadata['category'] = llm_category
                     metadata['classification'] = llm_classification
                 else:
-                    print(f"\n     结果: 分类失败，使用默认值")
-                    metadata['category'] = 'fanart_non_comic'
-                    metadata['classification'] = 'sfw'
+                    print(f"\n  ✗ LLM分类在{LLM_MAX_RETRIES}次重试后仍然失败，中止导入。")
+                    print(f"    请检查LMstudio是否正在运行: {LM_STUDIO_BASE_URL}")
+                    conn.close()
+                    sys.exit(1)
             
             # 干运行模式
             if dry_run:

@@ -52,6 +52,111 @@ import utils
 from blueprints.db_utils import get_db_readonly
 import markdown2
 
+
+# --- Public Mode Content Filter Helpers ---
+
+def _build_exclude_sql(exclude_rules):
+    """
+    将 exclude_rules 列表转换为 SQL NOT (condition) 子句列表。
+    返回 (clauses: list[str], params: list)
+    """
+    _OP_MAP = {
+        'eq':       lambda f, v: (f"{f} = ?", [v]),
+        'neq':      lambda f, v: (f"{f} != ?", [v]),
+        'is_null':  lambda f, v: (f"{f} IS NULL", []),
+        'not_null': lambda f, v: (f"{f} IS NOT NULL", []),
+        'like':     lambda f, v: (f"{f} LIKE ?", [v]),
+    }
+    clauses, params = [], []
+    for rule in (exclude_rules or []):
+        conditions = rule.get('conditions', [])
+        if not conditions:
+            continue
+        parts, rule_params = [], []
+        for cond in conditions:
+            field, op, value = cond.get('field'), cond.get('op'), cond.get('value')
+            if not field or op not in _OP_MAP:
+                continue
+            sql_part, p = _OP_MAP[op](field, value)
+            parts.append(sql_part)
+            rule_params.extend(p)
+        if parts:
+            clauses.append("NOT (" + " AND ".join(parts) + ")")
+            params.extend(rule_params)
+    return clauses, params
+
+
+def apply_public_filters(filters):
+    """
+    将 PUBLIC_MODE_FORCED_FILTERS 中的 query_filters 注入到 filters 字典，
+    并返回由 exclude_rules 生成的额外 SQL 子句和参数。
+    返回 (extra_clauses: list[str], extra_params: list)
+    """
+    cfg = getattr(config, 'PUBLIC_MODE_FORCED_FILTERS', {})
+
+    # 兼容旧格式（直接是 query_filters 内容）
+    if 'query_filters' in cfg:
+        for k, v in cfg['query_filters'].items():
+            filters[k] = v
+        exclude_rules = cfg.get('exclude_rules', [])
+    else:
+        for k, v in cfg.items():
+            filters[k] = v
+        exclude_rules = []
+
+    return _build_exclude_sql(exclude_rules)
+
+
+def check_artwork_visible(artwork):
+    """
+    检查单个 artwork（sqlite3.Row 或 dict）是否通过公开模式过滤。
+    用于 detail/proxy/thumbnail 等单条查询场景。
+    返回 True 表示可展示，False 表示应拒绝。
+    """
+    cfg = getattr(config, 'PUBLIC_MODE_FORCED_FILTERS', {})
+
+    # 兼容旧格式
+    if 'query_filters' in cfg:
+        exclude_rules = cfg.get('exclude_rules', [])
+    else:
+        exclude_rules = []
+
+    # 检查 exclude_rules
+    _OP_EVAL = {
+        'eq':       lambda fv, v: fv == v,
+        'neq':      lambda fv, v: fv != v,
+        'is_null':  lambda fv, v: fv is None,
+        'not_null': lambda fv, v: fv is not None,
+        'like':     lambda fv, v: _like_match(fv, v),
+    }
+    for rule in exclude_rules:
+        conditions = rule.get('conditions', [])
+        if all(
+            _OP_EVAL.get(c.get('op'), lambda *_: False)(
+                artwork[c['field']] if c.get('field') in (artwork.keys() if hasattr(artwork, 'keys') else artwork) else None,
+                c.get('value')
+            )
+            for c in conditions if c.get('field') and c.get('op')
+        ):
+            return False
+    return True
+
+
+def _inject_clauses(base_query, params, extra_clauses, extra_params):
+    """将额外的 WHERE 条件插入到 ORDER BY 之前"""
+    if not extra_clauses:
+        return base_query, params
+    extra_sql = (" AND " if " WHERE " in base_query else " WHERE ") + " AND ".join(extra_clauses)
+    if " ORDER BY " in base_query:
+        idx = base_query.index(" ORDER BY ")
+        base_query = base_query[:idx] + extra_sql + base_query[idx:]
+    else:
+        base_query += extra_sql
+    return base_query, list(params) + extra_params
+
+
+
+
 # Configuration
 IMAGES_PER_PAGE = config.IMAGES_PER_PAGE
 
@@ -140,19 +245,20 @@ def gallery():
     db = get_db_readonly()
     
     filters = request.args.to_dict()
-    
-    # Apply forced filters for public mode (not visible in URL)
-    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
-        for key, value in config.PUBLIC_MODE_FORCED_FILTERS.items():
-            filters[key] = value
-    
+
+    # Apply forced filters and get exclude_rules SQL clauses
+    extra_clauses, extra_params = apply_public_filters(filters)
+
     # Validate query parameters
     validate_query_params(filters)
-    
+
     sort_key = filters.get('sort', 'random')
 
     # Use unified query builder
     base_query, params = utils.build_artwork_query(filters, sort_key)
+
+    # Append exclude_rules conditions (must be inserted before ORDER BY)
+    base_query, params = _inject_clauses(base_query, params, extra_clauses, extra_params)
 
     # Handle seed generation redirect for random sort
     if 'random' in sort_key and 'seed' not in filters:
@@ -212,15 +318,10 @@ def artwork_detail(artwork_id):
     artwork = db.execute("SELECT * FROM artworks WHERE id = ?", (artwork_id,)).fetchone()
     if artwork is None:
         abort(404)
-    
-    # Apply content filtering based on PUBLIC_MODE_FORCED_FILTERS
-    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
-        classification_filter = config.PUBLIC_MODE_FORCED_FILTERS.get('classification_filter')
-        if classification_filter:
-            # Check if artwork meets the filter criteria
-            artwork_classification = artwork['classification'] or 'unspecified'
-            if classification_filter == 'sfw' and artwork_classification != 'sfw':
-                abort(403, description="Content not available in public mode")
+
+    # Apply content filtering
+    if not check_artwork_visible(artwork):
+        abort(403, description="Content not available in public mode")
     
     # Query series artworks
     import re
@@ -228,18 +329,35 @@ def artwork_detail(artwork_id):
     if artwork['title'] and artwork['artist']:
         if re.search(r'\s*\(\d+\)', artwork['title']):
             title_pattern = re.sub(r'\s*\(\d+\)', '', artwork['title'])
-            
-            query = """
-            SELECT id, file_name, title FROM artworks 
+
+            # Build exclude_rules conditions
+            ex_clauses, ex_params = _build_exclude_sql(
+                getattr(config, 'PUBLIC_MODE_FORCED_FILTERS', {}).get('exclude_rules', [])
+            )
+            # Also apply classification filter from query_filters
+            cfg = getattr(config, 'PUBLIC_MODE_FORCED_FILTERS', {})
+            qf = cfg.get('query_filters', cfg)
+            cls_filter = qf.get('classification_filter')
+            cls_clause = "AND classification = ?" if cls_filter and cls_filter not in ('unspecified',) else ""
+            cls_params = [cls_filter] if cls_clause else []
+
+            exclude_sql = (" AND " + " AND ".join(ex_clauses)) if ex_clauses else ""
+            query = f"""
+            SELECT id, file_name, title FROM artworks
             WHERE title LIKE ? AND artist = ? AND id != ?
+            {cls_clause}
+            {exclude_sql}
             ORDER BY title
             """
-            candidates = db.execute(query, (f'{title_pattern}%', artwork['artist'], artwork_id)).fetchall()
-            
+            candidates = db.execute(
+                query,
+                [f'{title_pattern}%', artwork['artist'], artwork_id] + cls_params + ex_params
+            ).fetchall()
+
             series_pattern = re.compile(f'^{re.escape(title_pattern)}\\s*\\(\\d+\\)')
             series_artworks = [
-                artwork for artwork in candidates 
-                if series_pattern.match(artwork['title'])
+                a for a in candidates
+                if series_pattern.match(a['title'])
             ]
     
     return render_template('artwork_detail.html', artwork=artwork, series_artworks=series_artworks, current_filters={})
@@ -339,8 +457,10 @@ def image_wall():
     filters = request.args.to_dict()
     sort_key = filters.get('sort', 'random')
     columns = request.args.get('columns', 4, type=int)
-    
+
+    extra_clauses, extra_params = apply_public_filters(filters)
     base_query, params = utils.build_artwork_query(filters, sort_key)
+    base_query, params = _inject_clauses(base_query, params, extra_clauses, extra_params)
     
     if 'random' in sort_key and 'seed' not in filters:
         from flask import redirect, url_for
@@ -616,11 +736,17 @@ def api_statistics(stat_type):
     db = get_db_readonly()
     
     # Build WHERE clause for content filtering
-    where_clause = ""
-    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
-        classification_filter = config.PUBLIC_MODE_FORCED_FILTERS.get('classification_filter')
-        if classification_filter == 'sfw':
-            where_clause = "WHERE (classification = 'sfw' OR classification IS NULL)"
+    where_parts = []
+    extra_params_stats = []
+
+    cfg = getattr(config, 'PUBLIC_MODE_FORCED_FILTERS', {})
+    exclude_rules = cfg.get('exclude_rules', []) if 'query_filters' in cfg else []
+    ex_clauses, ex_params = _build_exclude_sql(exclude_rules)
+    where_parts.extend(ex_clauses)
+    extra_params_stats.extend(ex_params)
+
+    where_clause = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
+    and_connector = "AND" if where_clause else "WHERE"
     
     if stat_type == 'rating':
         query = f"""
@@ -629,11 +755,11 @@ def api_statistics(stat_type):
             COUNT(*) as count 
         FROM artworks 
         {where_clause}
-        {'AND' if where_clause else 'WHERE'} rating IS NOT NULL
+        {and_connector} rating IS NOT NULL
         GROUP BY rating_value 
         ORDER BY rating_value DESC
         """
-        rows = db.execute(query).fetchall()
+        rows = db.execute(query, extra_params_stats).fetchall()
         data = [{'label': f'{row["rating_value"]}', 'value': row['count']} for row in rows]
         
     elif stat_type == 'artist-works':
@@ -646,7 +772,7 @@ def api_statistics(stat_type):
         GROUP BY artist 
         ORDER BY count DESC
         """
-        rows = db.execute(query).fetchall()
+        rows = db.execute(query, extra_params_stats).fetchall()
         data = [{'label': row['artist'] or 'Unknown', 'value': row['count']} for row in rows]
         
     elif stat_type == 'artist-stars':
@@ -656,11 +782,11 @@ def api_statistics(stat_type):
             SUM(rating - 5) as total_stars 
         FROM artworks 
         {where_clause}
-        {'AND' if where_clause else 'WHERE'} rating IS NOT NULL
+        {and_connector} rating IS NOT NULL
         GROUP BY artist 
         ORDER BY total_stars DESC
         """
-        rows = db.execute(query).fetchall()
+        rows = db.execute(query, extra_params_stats).fetchall()
         data = [{'label': row['artist'] or 'Unknown', 'value': row['total_stars']} for row in rows]
         
     elif stat_type == 'artist-average':
@@ -670,11 +796,11 @@ def api_statistics(stat_type):
             ROUND(AVG(rating - 5), 2) as average_rating
         FROM artworks 
         {where_clause}
-        {'AND' if where_clause else 'WHERE'} rating IS NOT NULL
+        {and_connector} rating IS NOT NULL
         GROUP BY artist 
         ORDER BY average_rating DESC
         """
-        rows = db.execute(query).fetchall()
+        rows = db.execute(query, extra_params_stats).fetchall()
         data = [{'label': row['artist'] or 'Unknown', 'value': float(row['average_rating'])} for row in rows]
         
     elif stat_type == 'artist-weighted':
@@ -685,11 +811,11 @@ def api_statistics(stat_type):
             COUNT(*) as work_count
         FROM artworks 
         {where_clause}
-        {'AND' if where_clause else 'WHERE'} rating IS NOT NULL
+        {and_connector} rating IS NOT NULL
         GROUP BY artist 
         ORDER BY average_rating DESC
         """
-        rows = db.execute(query).fetchall()
+        rows = db.execute(query, extra_params_stats).fetchall()
         import math
         data = [{'label': row['artist'] or 'Unknown', 'value': float(row['average_rating'] * math.log(row['work_count'] + 1))} for row in rows]
         # Filter out results with value <= 0 (only show positive recommendations)
@@ -721,21 +847,15 @@ def public_image_proxy(artwork_id):
     
     # Check if artwork exists and get its classification
     artwork = db.execute(
-        "SELECT file_path, classification FROM artworks WHERE id = ?", 
+        "SELECT file_path, classification, source_url, artist, category FROM artworks WHERE id = ?",
         (artwork_id,)
     ).fetchone()
-    
+
     if not artwork:
         abort(404, description="Artwork not found")
-    
-    # Apply content filtering based on PUBLIC_MODE_FORCED_FILTERS
-    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
-        classification_filter = config.PUBLIC_MODE_FORCED_FILTERS.get('classification_filter')
-        if classification_filter:
-            # Check if artwork meets the filter criteria
-            artwork_classification = artwork['classification'] or 'unspecified'
-            if classification_filter == 'sfw' and artwork_classification != 'sfw':
-                abort(403, description="Content not available in public mode")
+
+    if not check_artwork_visible(artwork):
+        abort(403, description="Content not available in public mode")
     
     # Serve the file if it exists
     if artwork['file_path'] and os.path.exists(artwork['file_path']):
@@ -758,21 +878,15 @@ def public_thumbnail(artwork_id):
     
     # Check if artwork exists and get its classification and thumbnail
     artwork = db.execute(
-        "SELECT thumbnail_filename, classification FROM artworks WHERE id = ?", 
+        "SELECT thumbnail_filename, classification, source_url, artist, category FROM artworks WHERE id = ?",
         (artwork_id,)
     ).fetchone()
-    
+
     if not artwork:
         abort(404, description="Artwork not found")
-    
-    # Apply content filtering based on PUBLIC_MODE_FORCED_FILTERS
-    if hasattr(config, 'PUBLIC_MODE_FORCED_FILTERS'):
-        classification_filter = config.PUBLIC_MODE_FORCED_FILTERS.get('classification_filter')
-        if classification_filter:
-            # Check if artwork meets the filter criteria
-            artwork_classification = artwork['classification'] or 'unspecified'
-            if classification_filter == 'sfw' and artwork_classification != 'sfw':
-                abort(403, description="Content not available in public mode")
+
+    if not check_artwork_visible(artwork):
+        abort(403, description="Content not available in public mode")
     
     # Serve the thumbnail if it exists
     if artwork['thumbnail_filename']:
@@ -847,3 +961,10 @@ def serve_static(filename):
     """
     from flask import send_from_directory, current_app
     return send_from_directory(current_app.static_folder, filename)
+
+def _like_match(field_value, pattern):
+    """简单模拟 SQL LIKE（仅支持 % 通配符）"""
+    import fnmatch
+    if field_value is None:
+        return False
+    return fnmatch.fnmatch(str(field_value), pattern.replace('%', '*'))

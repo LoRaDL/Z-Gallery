@@ -51,6 +51,7 @@ static/thumbnails/
 static/thumbnails_old/
 static/comics_thumbnails/
 tools/batch_twitter/downloads
+tools/Digger_import/batch1
 
 # 垃圾箱
 trash/

@@ -13,63 +13,51 @@ from datetime import datetime, timedelta
 
 
 def parse_date_folder(folder_name):
-    """解析日期文件夹名称，返回结束日期和年份"""
-    # 格式: MMDD-MMDD
-    match = re.match(r'(\d{2})(\d{2})-(\d{2})(\d{2})', folder_name)
+    """解析日期文件夹名称，返回结束日期。格式: YYMMDD-YYMMDD"""
+    match = re.match(r'(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$', folder_name)
     if match:
-        start_month, start_day, end_month, end_day = match.groups()
-        # 从2025年开始
-        year = 2025
+        yy1, mm1, dd1, yy2, mm2, dd2 = match.groups()
         try:
-            end_date = datetime(year, int(end_month), int(end_day))
-            return end_date, year
+            end_date = datetime(2000 + int(yy2), int(mm2), int(dd2))
+            return end_date
         except ValueError:
-            return None, None
-    return None, None
+            return None
+    return None
 
 
 def get_latest_date_folder():
     """获取最新的日期文件夹"""
     script_dir = os.path.dirname(__file__)
     downloads_dir = os.path.join(script_dir, 'downloads')
-    
+
     if not os.path.exists(downloads_dir):
         return None
-    
+
     date_folders = []
     for dirname in os.listdir(downloads_dir):
-        end_date, year = parse_date_folder(dirname)
+        end_date = parse_date_folder(dirname)
         if end_date:
-            date_folders.append((dirname, end_date, year))
-    
+            date_folders.append((dirname, end_date))
+
     if not date_folders:
         return None
-    
-    # 返回最新的文件夹
+
     date_folders.sort(key=lambda x: x[1])
     return date_folders[-1]
 
 
-def generate_next_date_range(last_end_date, base_year):
+def generate_next_date_range(last_end_date):
     """生成下一个日期范围"""
-    # 下一天作为开始日期
     start_date = last_end_date
-    # 结束日期是开始日期的下一天
     end_date = start_date + timedelta(days=1)
-    
-    # 检查是否跨年
-    if end_date.year > base_year:
-        # 跨年了，更新年份
-        base_year = end_date.year
-    
-    # 格式化为 MMDD-MMDD
-    folder_name = f"{start_date.strftime('%m%d')}-{end_date.strftime('%m%d')}"
-    
-    # 格式化为 URL 中的日期格式 YYYY-MM-DD
+
+    # 格式化为 YYMMDD-YYMMDD
+    folder_name = f"{start_date.strftime('%y%m%d')}-{end_date.strftime('%y%m%d')}"
+
     url_start = start_date.strftime('%Y-%m-%d')
     url_end = end_date.strftime('%Y-%m-%d')
-    
-    return folder_name, url_start, url_end, base_year
+
+    return folder_name, url_start, url_end
 
 
 def check_folder_exists(folder_name):
@@ -102,11 +90,11 @@ def main():
     latest = get_latest_date_folder()
     
     if latest is None:
-        print("\n错误: 未找到任何日期格式的文件夹 (MMDD-MMDD)")
-        print("请先手动创建第一个文件夹，例如: 1224-1225")
+        print("\n错误: 未找到任何日期格式的文件夹 (YYMMDD-YYMMDD)")
+        print("请先手动创建第一个文件夹，例如: 251224-251225")
         sys.exit(1)
     
-    folder_name, last_end_date, base_year = latest
+    folder_name, last_end_date = latest
     print(f"\n最新文件夹: {folder_name}")
     print(f"最后日期: {last_end_date.strftime('%Y-%m-%d')}")
     print(f"计划下载: 之后 {days_to_download} 天的内容")
@@ -117,14 +105,12 @@ def main():
     
     download_plan = []
     current_date = last_end_date
-    current_year = base_year
     
     for day_num in range(days_to_download):
-        next_folder, url_start, url_end, current_year = generate_next_date_range(current_date, current_year)
+        next_folder, url_start, url_end = generate_next_date_range(current_date)
         
-        # 检查是否已存在同名文件夹（不同年份）
         if check_folder_exists(next_folder) and day_num > 0:
-            print(f"\n警告: 文件夹 {next_folder} 已存在（可能是不同年份）")
+            print(f"\n警告: 文件夹 {next_folder} 已存在")
             print(f"将只下载前 {day_num} 个批次")
             break
         
@@ -132,12 +118,10 @@ def main():
             'folder': next_folder,
             'url_start': url_start,
             'url_end': url_end,
-            'year': current_year
         })
         
         print(f"{day_num + 1:2d}. {next_folder}  ({url_start} 到 {url_end})")
         
-        # 更新当前日期为这次的结束日期
         current_date = datetime.strptime(url_end, '%Y-%m-%d')
     
     print("-" * 70)
@@ -176,7 +160,7 @@ def main():
             download_script,
             url,
             '--resume', plan['folder'],
-            '--sleep', '0.5'
+            '--sleep', '0.1'
         ]
         
         try:
