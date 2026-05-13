@@ -1,4 +1,6 @@
 {% extends "layout.html" %}
+{% block title %}{% set p1, p2, p3, p4 = current_filters.get('artist'), current_filters.get('source_platform'), current_filters.get('q'), current_filters.get('category') %}{% if p1 or p2 or p3 or p4 %}{% if p1 %}{{ p1 }} — {% endif %}{% if p2 %}{{ p2 }} — {% endif %}{% if p3 %}Search: {{ p3 }} — {% endif %}{% if p4 %}{{ p4|replace('_', ' ')|title }} — {% endif %}Gallery — Zootopia Fanart Gallery{% else %}Zootopia Fanart Gallery{% endif %}{% endblock %}
+{% block meta_description %}{% if current_filters.get('artist') %}Browse Zootopia fanart by {{ current_filters['artist'] }}.{% elif current_filters.get('q') %}Search results for "{{ current_filters['q'] }}" in the Zootopia Fanart Gallery.{% elif current_filters.get('source_platform') %}Zootopia fanart from {{ current_filters['source_platform'] }}.{% else %}Browse {{ total_artworks }} Zootopia fan-created artworks. Filter by artist, platform, category and rating.{% endif %}{% endblock %}
 {% block content %}
 
 <style>

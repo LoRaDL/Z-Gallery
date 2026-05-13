@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>{% if request.endpoint and 'comics' in request.endpoint %}Zootopia Comics{% else %}Zootopia Fanart Gallery{% endif %}</title>
+    <title>{% block title %}Zootopia Fanart Gallery{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}An unofficial fanart gallery dedicated to Disney's Zootopia. Browse thousands of fan-created artworks, filter by artist, category and more.{% endblock %}">
+    <link rel="canonical" href="{% block canonical_url %}{{ build_canonical_url() }}{% endblock %}">
     <link rel="icon" type="image/x-icon" href="{{ mode_url_for('static', filename='favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ mode_url_for('static', filename='favicon-16x16.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ mode_url_for('static', filename='favicon-32x32.png') }}">

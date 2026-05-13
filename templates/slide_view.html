@@ -1,4 +1,6 @@
 {% extends "layout.html" %}
+{% block title %}{% if artwork %}{{ artwork.title or 'Untitled' }} — {% endif %}Slide View — Zootopia Fanart Gallery{% endblock %}
+{% block meta_description %}{% if artwork %}Viewing "{{ artwork.title or 'Untitled' }}" by {{ artwork.artist or 'Unknown' }} in slideshow mode.{% else %}Browse Zootopia fanart one image at a time in slideshow mode.{% endif %}{% endblock %}
 {% block content %}
 <link rel="stylesheet" href="{{ mode_url_for('static', filename='css/slide_view.css') }}">
 

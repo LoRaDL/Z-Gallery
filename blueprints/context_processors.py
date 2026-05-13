@@ -5,7 +5,7 @@ This module provides template context processors that inject mode information
 and URL generation helpers into all templates.
 """
 
-from flask import g, url_for
+from flask import g, url_for, request
 
 
 def inject_mode_context():
@@ -87,6 +87,40 @@ def inject_url_helpers():
     return {'mode_url_for': mode_url_for}
 
 
+def inject_canonical_url():
+    """
+    Inject a canonical URL builder into template context.
+    
+    Strips SEO-noise parameters (seed, threshold, similar_to) and normalizes
+    page=1 to produce a clean canonical URL for search engines.
+    """
+    # Parameters that are noise for canonical URLs
+    NOISE_PARAMS = {'seed', 'threshold', 'similar_to'}
+    
+    def build_canonical_url():
+        """Build a canonical URL from the current request, stripping noise parameters."""
+        # Start with base URL (no query string)
+        base = request.base_url
+        
+        # Filter query parameters: keep only meaningful ones
+        clean_params = {}
+        for key, value in request.args.items():
+            # Skip noise parameters
+            if key in NOISE_PARAMS:
+                continue
+            # Skip page=1 (it's the default)
+            if key == 'page' and value == '1':
+                continue
+            clean_params[key] = value
+        
+        if clean_params:
+            from urllib.parse import urlencode
+            return f"{base}?{urlencode(clean_params)}"
+        return base
+    
+    return {'build_canonical_url': build_canonical_url}
+
+
 def register_context_processors(app):
     """
     Register all context processors with the Flask app.
@@ -96,3 +130,4 @@ def register_context_processors(app):
     """
     app.context_processor(inject_mode_context)
     app.context_processor(inject_url_helpers)
+    app.context_processor(inject_canonical_url)

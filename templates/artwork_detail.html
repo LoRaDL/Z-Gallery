@@ -1,4 +1,6 @@
 {% extends "layout.html" %}
+{% block title %}{{ artwork.title or 'Untitled' }} by {{ artwork.artist or 'Unknown' }} — Zootopia Fanart Gallery{% endblock %}
+{% block meta_description %}{{ artwork.title or 'Untitled' }} by {{ artwork.artist or 'Unknown' }}. {% if artwork.description %}{{ artwork.description[:150]|replace('\n', ' ') }}{% else %}A Zootopia fanart from {{ artwork.source_platform or 'an unknown platform' }}.{% endif %}{% endblock %}
 {% block content %}
     <div class="detail-container">
         <div class="detail-image">

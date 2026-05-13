@@ -237,7 +237,7 @@ def get_aspect_ratios_db():
 
 @public_bp.route('/')
 @public_bp.route('/gallery')
-@rate_limit(limit=1000, window=121)
+@rate_limit(limit=1000, window=900)
 def gallery():
     """Public mode gallery page - read-only"""
     from blueprints.security import validate_query_params
@@ -311,7 +311,7 @@ def gallery():
 
 
 @public_bp.route('/artwork/<int:artwork_id>')
-@rate_limit(limit=1000, window=121)
+@rate_limit(limit=1000, window=900)
 def artwork_detail(artwork_id):
     """Public mode artwork detail page - read-only"""
     db = get_db_readonly()
@@ -364,7 +364,7 @@ def artwork_detail(artwork_id):
 
 
 @public_bp.route('/slide_view')
-@rate_limit(limit=1000, window=121)
+@rate_limit(limit=1000, window=900)
 def slide_view():
     """Disabled in public mode"""
     abort(404)
@@ -449,7 +449,7 @@ def slide_view():
 
 
 @public_bp.route('/image-wall')
-@rate_limit(limit=100, window=121)
+@rate_limit(limit=100, window=900)
 def image_wall():
     """Public mode image wall view - read-only"""
     db = get_db_readonly()
@@ -505,7 +505,7 @@ def image_wall():
 
 
 @public_bp.route('/statistics')
-@rate_limit(limit=100, window=121)
+@rate_limit(limit=100, window=900)
 def statistics():
     """Public mode statistics page - read-only"""
     return render_template('statistics.html', current_filters={})
@@ -515,7 +515,7 @@ def statistics():
 # --- Comics Routes ---
 
 @public_bp.route('/comics')
-@rate_limit(limit=100, window=121)
+@rate_limit(limit=100, window=900)
 def comics():
     """Disabled in public mode"""
     abort(404)
@@ -559,7 +559,7 @@ def comics():
 
 
 @public_bp.route('/comic/<int:comic_id>')
-@rate_limit(limit=100, window=121)
+@rate_limit(limit=100, window=900)
 def comic_reader(comic_id):
     """Disabled in public mode"""
     abort(404)
@@ -640,7 +640,7 @@ def artist_ranking_noscript():
 # --- API Routes ---
 
 @public_bp.route('/api/popup_content')
-@rate_limit(limit=1000, window=121)
+@rate_limit(limit=1000, window=900)
 def api_popup_content():
     """
     API endpoint for loading popup content.
@@ -729,7 +729,7 @@ def api_popup_content():
 
 
 @public_bp.route('/api/statistics/<stat_type>')
-@rate_limit(limit=1000, window=121)
+@rate_limit(limit=1000, window=900)
 def api_statistics(stat_type):
     """Statistics API endpoint - public mode with content filtering"""
     from flask import jsonify
@@ -834,7 +834,7 @@ def api_statistics(stat_type):
 # --- Image Serving Routes with Content Filtering ---
 
 @public_bp.route('/image_proxy/<int:artwork_id>', endpoint='image_proxy')
-@rate_limit(limit=1000, window=121)
+@rate_limit(limit=1000, window=900)
 def public_image_proxy(artwork_id):
     """Proxy for serving artwork images - public mode with content filtering"""
     from blueprints.security import validate_artwork_id
@@ -865,7 +865,7 @@ def public_image_proxy(artwork_id):
 
 
 @public_bp.route('/thumbnail/<int:artwork_id>', endpoint='thumbnail')
-@rate_limit(limit=1000, window=121)
+@rate_limit(limit=1000, window=900)
 def public_thumbnail(artwork_id):
     """Serve thumbnail images - public mode with content filtering"""
     from blueprints.security import validate_artwork_id

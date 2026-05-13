@@ -8,7 +8,7 @@ It uses in-memory storage to track request counts per IP address.
 import time
 from functools import wraps
 from flask import request, abort, g
-from collections import defaultdict
+from collections import defaultdict, deque
 from threading import Lock
 from logger import logger
 
@@ -21,8 +21,10 @@ class RateLimiter:
     """
     
     def __init__(self):
-        self.requests = defaultdict(list)
+        self.requests = defaultdict(deque)
         self.lock = Lock()
+        self.last_cleanup = time.time()
+        self.cleanup_interval = 600  # Clean up every 10 minutes
     
     def is_rate_limited(self, key, limit, window):
         """
@@ -39,73 +41,85 @@ class RateLimiter:
         with self.lock:
             now = time.time()
             
-            # Remove old requests outside the time window
-            self.requests[key] = [
-                req_time for req_time in self.requests[key]
-                if now - req_time < window
-            ]
+            # Periodic global cleanup
+            if now - self.last_cleanup > self.cleanup_interval:
+                self.cleanup_old_entries()
+                self.last_cleanup = now
+            
+            # Remove old requests outside the time window for this key
+            timestamps = self.requests[key]
+            while timestamps and now - timestamps[0] >= window:
+                timestamps.popleft()
             
             # Check if limit exceeded
-            if len(self.requests[key]) >= limit:
+            if len(timestamps) >= limit:
                 return True
             
             # Add current request
-            self.requests[key].append(now)
+            timestamps.append(now)
             return False
     
-    def cleanup_old_entries(self, max_age=121):
+    def cleanup_old_entries(self, max_age=3600):
         """
         Clean up old entries to prevent memory bloat.
         
         Args:
-            max_age: Maximum age in seconds for entries to keep
+            max_age: Maximum age in seconds for entries to keep (default: 1 hour)
         """
-        with self.lock:
-            now = time.time()
-            keys_to_remove = []
+        # Note: self.lock should be acquired by the caller or we should use a separate lock
+        # if called internally. Since is_rate_limited holds the lock, we don't re-acquire here
+        # to avoid deadlocks (Lock is not re-entrant by default, though we could use RLock).
+        # Actually, let's make it safe to call independently too.
+        
+        # We'll use a local helper to avoid re-acquiring if already held, 
+        # but for simplicity, let's just use the lock and ensure we don't nest it.
+        
+        now = time.time()
+        keys_to_remove = []
+        
+        for key, timestamps in self.requests.items():
+            # Remove old timestamps
+            while timestamps and now - timestamps[0] >= max_age:
+                timestamps.popleft()
             
-            for key, timestamps in self.requests.items():
-                # Remove old timestamps
-                self.requests[key] = [
-                    ts for ts in timestamps
-                    if now - ts < max_age
-                ]
-                
-                # Mark empty entries for removal
-                if not self.requests[key]:
-                    keys_to_remove.append(key)
-            
-            # Remove empty entries
-            for key in keys_to_remove:
-                del self.requests[key]
+            # Mark empty entries for removal
+            if not timestamps:
+                keys_to_remove.append(key)
+        
+        # Remove empty entries
+        for key in keys_to_remove:
+            del self.requests[key]
 
 
 # Global rate limiter instance
 _rate_limiter = RateLimiter()
 
 
-def rate_limit(limit=1000, window=121, per='user'):
+def rate_limit(limit=1000, window=900, per='user'):
     """
     Decorator to apply rate limiting to a route.
     
     Args:
         limit: Maximum number of requests allowed
-        window: Time window in seconds (default: 121 = 1 hour)
+        window: Time window in seconds (default: 900 = 15 minutes)
         per: What to rate limit by ('ip' or 'user')
     
     Usage:
-        @rate_limit(limit=100, window=121)
+        @rate_limit(limit=100, window=900)
         def my_route():
             ...
     """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # Determine the key to rate limit by
+            # Determine the key to rate limit by: include the endpoint to make limits per-route
+            endpoint = request.endpoint or 'unknown'
             if per == 'ip':
-                key = request.remote_addr or 'unknown'
+                client_id = request.remote_addr or 'unknown'
             else:
-                key = getattr(g, 'user_id', request.remote_addr or 'unknown')
+                client_id = getattr(g, 'user_id', request.remote_addr or 'unknown')
+            
+            key = f"{endpoint}:{client_id}"
             
             # Check rate limit
             if _rate_limiter.is_rate_limited(key, limit, window):

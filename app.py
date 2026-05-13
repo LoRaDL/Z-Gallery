@@ -11,6 +11,7 @@ import subprocess
 import shutil
 from flask import Flask, render_template, request, g, redirect, url_for, abort, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from PIL import Image
 import imagehash
 import config
@@ -76,6 +77,8 @@ class AnchorFixMiddleware:
 
 # Apply the middleware
 app.wsgi_app = AnchorFixMiddleware(app.wsgi_app)
+# Add ProxyFix to handle X-Forwarded-For headers
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1, x_prefix=1)
 
 
 # --- Database Connection Handling ---

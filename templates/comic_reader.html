@@ -1,4 +1,6 @@
 {% extends "layout.html" %}
+{% block title %}{{ comic.title }} — Zootopia Comics{% endblock %}
+{% block meta_description %}Read "{{ comic.title }}" by {{ comic.artist or 'Unknown' }} — a Zootopia fan-made comic.{% endblock %}
 {% block content %}
 <div class="comic-reader">
     <div class="comic-header">
